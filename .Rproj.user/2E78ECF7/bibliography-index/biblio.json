@@ -1,0 +1,1886 @@
+{
+    "sources": [
+        {
+            "URL": "http://yihui.name/knitr/",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "edition": "2nd",
+            "id": "xie2015",
+            "issued": {
+                "date-parts": [
+                    [
+                        2015
+                    ]
+                ]
+            },
+            "note": "ISBN 978-1498716963",
+            "publisher": "Chapman; Hall/CRC",
+            "publisher-place": "Boca Raton, Florida",
+            "title": "Dynamic documents with R and knitr",
+            "type": "book"
+        },
+        {
+            "URL": "https://www.R-project.org/",
+            "author": [
+                {
+                    "literal": "R Core Team"
+                }
+            ],
+            "id": "R-base",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "publisher": "R Foundation for Statistical Computing",
+            "publisher-place": "Vienna, Austria",
+            "title": "R: A language and environment for statistical computing",
+            "title-short": "R",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=bookdown",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "id": "R-bookdown",
+            "issued": {
+                "date-parts": [
+                    [
+                        2024
+                    ]
+                ]
+            },
+            "note": "R package version 0.38",
+            "title": "Bookdown: Authoring books and technical documents with r markdown",
+            "title-short": "Bookdown",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=broom",
+            "author": [
+                {
+                    "family": "Robinson",
+                    "given": "David"
+                },
+                {
+                    "family": "Hayes",
+                    "given": "Alex"
+                },
+                {
+                    "family": "Couch",
+                    "given": "Simon"
+                }
+            ],
+            "id": "R-broom",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.5",
+            "title": "Broom: Convert statistical objects into tidy tibbles",
+            "title-short": "Broom",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/topepo/caret/",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                }
+            ],
+            "id": "R-caret",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 6.0-94",
+            "title": "Caret: Classification and regression training",
+            "title-short": "Caret",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=dials",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Frick",
+                    "given": "Hannah"
+                }
+            ],
+            "id": "R-dials",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.2.0",
+            "title": "Dials: Tools for creating tuning parameter values",
+            "title-short": "Dials",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=dplyr",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "François",
+                    "given": "Romain"
+                },
+                {
+                    "family": "Henry",
+                    "given": "Lionel"
+                },
+                {
+                    "family": "Müller",
+                    "given": "Kirill"
+                },
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                }
+            ],
+            "id": "R-dplyr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.4",
+            "title": "Dplyr: A grammar of data manipulation",
+            "title-short": "Dplyr",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=forcats",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-forcats",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.0",
+            "title": "Forcats: Tools for working with categorical variables (factors)",
+            "title-short": "Forcats",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=ggplot2",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Chang",
+                    "given": "Winston"
+                },
+                {
+                    "family": "Henry",
+                    "given": "Lionel"
+                },
+                {
+                    "family": "Pedersen",
+                    "given": "Thomas Lin"
+                },
+                {
+                    "family": "Takahashi",
+                    "given": "Kohske"
+                },
+                {
+                    "family": "Wilke",
+                    "given": "Claus"
+                },
+                {
+                    "family": "Woo",
+                    "given": "Kara"
+                },
+                {
+                    "family": "Yutani",
+                    "given": "Hiroaki"
+                },
+                {
+                    "family": "Dunnington",
+                    "given": "Dewey"
+                }
+            ],
+            "id": "R-ggplot2",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 3.4.4",
+            "title": "ggplot2: Create elegant data visualisations using the grammar of graphics",
+            "title-short": "ggplot2",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=ggraph",
+            "author": [
+                {
+                    "family": "Pedersen",
+                    "given": "Thomas Lin"
+                }
+            ],
+            "id": "R-ggraph",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 2.1.0",
+            "title": "Ggraph: An implementation of grammar of graphics for graphs and networks",
+            "title-short": "Ggraph",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=igraph",
+            "author": [
+                {
+                    "family": "Csárdi",
+                    "given": "Gábor"
+                },
+                {
+                    "family": "Nepusz",
+                    "given": "Tamás"
+                },
+                {
+                    "family": "Traag",
+                    "given": "Vincent"
+                },
+                {
+                    "family": "Horvát",
+                    "given": "Szabolcs"
+                },
+                {
+                    "family": "Zanini",
+                    "given": "Fabio"
+                },
+                {
+                    "family": "Noom",
+                    "given": "Daniel"
+                },
+                {
+                    "family": "Müller",
+                    "given": "Kirill"
+                }
+            ],
+            "id": "R-igraph",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.5.1",
+            "title": "Igraph: Network analysis and visualization",
+            "title-short": "Igraph",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=infer",
+            "author": [
+                {
+                    "family": "Bray",
+                    "given": "Andrew"
+                },
+                {
+                    "family": "Ismay",
+                    "given": "Chester"
+                },
+                {
+                    "family": "Chasnovski",
+                    "given": "Evgeni"
+                },
+                {
+                    "family": "Couch",
+                    "given": "Simon"
+                },
+                {
+                    "family": "Baumer",
+                    "given": "Ben"
+                },
+                {
+                    "family": "Cetinkaya-Rundel",
+                    "given": "Mine"
+                }
+            ],
+            "id": "R-infer",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.5",
+            "title": "Infer: Tidy statistical inference",
+            "title-short": "Infer",
+            "type": "book"
+        },
+        {
+            "URL": "https://alastairrushworth.github.io/inspectdf/",
+            "author": [
+                {
+                    "family": "Rushworth",
+                    "given": "Alastair"
+                }
+            ],
+            "id": "R-inspectdf",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 0.0.12",
+            "title": "Inspectdf: Inspection, comparison and visualisation of data frames",
+            "title-short": "Inspectdf",
+            "type": "book"
+        },
+        {
+            "URL": "https://yihui.org/knitr/",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "id": "R-knitr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.43",
+            "title": "Knitr: A general-purpose package for dynamic report generation in r",
+            "title-short": "Knitr",
+            "type": "book"
+        },
+        {
+            "URL": "https://lattice.r-forge.r-project.org/",
+            "author": [
+                {
+                    "family": "Sarkar",
+                    "given": "Deepayan"
+                }
+            ],
+            "id": "R-lattice",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 0.21-8",
+            "title": "Lattice: Trellis graphics for r",
+            "title-short": "Lattice",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=lime",
+            "author": [
+                {
+                    "family": "Hvitfeldt",
+                    "given": "Emil"
+                },
+                {
+                    "family": "Pedersen",
+                    "given": "Thomas Lin"
+                },
+                {
+                    "family": "Benesty",
+                    "given": "Michaël"
+                }
+            ],
+            "id": "R-lime",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 0.5.3",
+            "title": "Lime: Local interpretable model-agnostic explanations",
+            "title-short": "Lime",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=lubridate",
+            "author": [
+                {
+                    "family": "Spinu",
+                    "given": "Vitalie"
+                },
+                {
+                    "family": "Grolemund",
+                    "given": "Garrett"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-lubridate",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.9.2",
+            "title": "Lubridate: Make dealing with dates a little easier",
+            "title-short": "Lubridate",
+            "type": "book"
+        },
+        {
+            "URL": "http://github.com/yanyachen/MLmetrics",
+            "author": [
+                {
+                    "family": "Yan",
+                    "given": "Yachen"
+                }
+            ],
+            "id": "R-MLmetrics",
+            "issued": {
+                "date-parts": [
+                    [
+                        2016
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.1",
+            "title": "MLmetrics: Machine learning evaluation metrics",
+            "title-short": "MLmetrics",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=modeldata",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                }
+            ],
+            "id": "R-modeldata",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.2.0",
+            "title": "Modeldata: Data sets useful for modeling examples",
+            "title-short": "Modeldata",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=parsnip",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                }
+            ],
+            "id": "R-parsnip",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.1",
+            "title": "Parsnip: A common API to modeling and analysis functions",
+            "title-short": "Parsnip",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=purrr",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Henry",
+                    "given": "Lionel"
+                }
+            ],
+            "id": "R-purrr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.1",
+            "title": "Purrr: Functional programming tools",
+            "title-short": "Purrr",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=RColorBrewer",
+            "author": [
+                {
+                    "family": "Neuwirth",
+                    "given": "Erich"
+                }
+            ],
+            "id": "R-RColorBrewer",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 1.1-3",
+            "title": "RColorBrewer: ColorBrewer palettes",
+            "title-short": "RColorBrewer",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=readr",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Hester",
+                    "given": "Jim"
+                },
+                {
+                    "family": "Bryan",
+                    "given": "Jennifer"
+                }
+            ],
+            "id": "R-readr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 2.1.4",
+            "title": "Readr: Read rectangular text data",
+            "title-short": "Readr",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=recipes",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Hvitfeldt",
+                    "given": "Emil"
+                }
+            ],
+            "id": "R-recipes",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.8",
+            "title": "Recipes: Preprocessing and feature engineering steps for modeling",
+            "title-short": "Recipes",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/hadley/reshape",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-reshape2",
+            "issued": {
+                "date-parts": [
+                    [
+                        2020
+                    ]
+                ]
+            },
+            "note": "R package version 1.4.4",
+            "title": "reshape2: Flexibly reshape data: A reboot of the reshape package",
+            "title-short": "reshape2",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=rmarkdown",
+            "author": [
+                {
+                    "family": "Allaire",
+                    "given": "JJ"
+                },
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                },
+                {
+                    "family": "Dervieux",
+                    "given": "Christophe"
+                },
+                {
+                    "family": "McPherson",
+                    "given": "Jonathan"
+                },
+                {
+                    "family": "Luraschi",
+                    "given": "Javier"
+                },
+                {
+                    "family": "Ushey",
+                    "given": "Kevin"
+                },
+                {
+                    "family": "Atkins",
+                    "given": "Aron"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Cheng",
+                    "given": "Joe"
+                },
+                {
+                    "family": "Chang",
+                    "given": "Winston"
+                },
+                {
+                    "family": "Iannone",
+                    "given": "Richard"
+                }
+            ],
+            "id": "R-rmarkdown",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 2.23",
+            "title": "Rmarkdown: Dynamic documents for r",
+            "title-short": "Rmarkdown",
+            "type": "book"
+        },
+        {
+            "URL": "http://ipa-tys.github.io/ROCR/",
+            "author": [
+                {
+                    "family": "Sing",
+                    "given": "Tobias"
+                },
+                {
+                    "family": "Sander",
+                    "given": "Oliver"
+                },
+                {
+                    "family": "Beerenwinkel",
+                    "given": "Niko"
+                },
+                {
+                    "family": "Lengauer",
+                    "given": "Thomas"
+                }
+            ],
+            "id": "R-ROCR",
+            "issued": {
+                "date-parts": [
+                    [
+                        2020
+                    ]
+                ]
+            },
+            "note": "R package version 1.0-11",
+            "title": "ROCR: Visualizing the performance of scoring classifiers",
+            "title-short": "ROCR",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=rsample",
+            "author": [
+                {
+                    "family": "Frick",
+                    "given": "Hannah"
+                },
+                {
+                    "family": "Chow",
+                    "given": "Fanny"
+                },
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Mahoney",
+                    "given": "Michael"
+                },
+                {
+                    "family": "Silge",
+                    "given": "Julia"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-rsample",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.2.0",
+            "title": "Rsample: General resampling infrastructure",
+            "title-short": "Rsample",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=scales",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Pedersen",
+                    "given": "Thomas Lin"
+                },
+                {
+                    "family": "Seidel",
+                    "given": "Dana"
+                }
+            ],
+            "id": "R-scales",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.3.0",
+            "title": "Scales: Scale functions for visualization",
+            "title-short": "Scales",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/trinker/sentimentr",
+            "author": [
+                {
+                    "family": "Rinker",
+                    "given": "Tyler"
+                }
+            ],
+            "id": "R-sentimentr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2021
+                    ]
+                ]
+            },
+            "note": "R package version 2.9.0",
+            "title": "Sentimentr: Calculate text polarity sentiment",
+            "title-short": "Sentimentr",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/nalimilan/R.TeMiS",
+            "author": [
+                {
+                    "family": "Bouchet-Valat",
+                    "given": "Milan"
+                }
+            ],
+            "id": "R-SnowballC",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 0.7.1",
+            "title": "SnowballC: Snowball stemmers based on the c libstemmer UTF-8 library",
+            "title-short": "SnowballC",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=stringr",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-stringr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 1.5.0",
+            "title": "Stringr: Simple, consistent wrappers for common string operations",
+            "title-short": "Stringr",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/trinker/textclean",
+            "author": [
+                {
+                    "family": "Rinker",
+                    "given": "Tyler"
+                }
+            ],
+            "id": "R-textclean",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "note": "R package version 0.9.3",
+            "title": "Textclean: Text cleaning tools",
+            "title-short": "Textclean",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=tibble",
+            "author": [
+                {
+                    "family": "Müller",
+                    "given": "Kirill"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-tibble",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 3.2.1",
+            "title": "Tibble: Simple data frames",
+            "title-short": "Tibble",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=tidymodels",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-tidymodels",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.1",
+            "title": "Tidymodels: Easily install and load the tidymodels packages",
+            "title-short": "Tidymodels",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=tidyr",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                },
+                {
+                    "family": "Girlich",
+                    "given": "Maximilian"
+                }
+            ],
+            "id": "R-tidyr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.3.0",
+            "title": "Tidyr: Tidy messy data",
+            "title-short": "Tidyr",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/juliasilge/tidytext",
+            "author": [
+                {
+                    "family": "Robinson",
+                    "given": "David"
+                },
+                {
+                    "family": "Silge",
+                    "given": "Julia"
+                }
+            ],
+            "id": "R-tidytext",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 0.4.1",
+            "title": "Tidytext: Text mining using dplyr, ggplot2, and other tidy tools",
+            "title-short": "Tidytext",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=tidyverse",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "R-tidyverse",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 2.0.0",
+            "title": "Tidyverse: Easily install and load the tidyverse",
+            "title-short": "Tidyverse",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=tune",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                }
+            ],
+            "id": "R-tune",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.2",
+            "title": "Tune: Tidy tuning tools",
+            "title-short": "Tune",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=widyr",
+            "author": [
+                {
+                    "family": "Robinson",
+                    "given": "David"
+                },
+                {
+                    "family": "Silge",
+                    "given": "Julia"
+                }
+            ],
+            "id": "R-widyr",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "note": "R package version 0.1.5",
+            "title": "Widyr: Widen, process, then re-tidy data",
+            "title-short": "Widyr",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=wordcloud",
+            "author": [
+                {
+                    "family": "Fellows",
+                    "given": "Ian"
+                }
+            ],
+            "id": "R-wordcloud",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "note": "R package version 2.6",
+            "title": "Wordcloud: Word clouds",
+            "title-short": "Wordcloud",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/lchiffon/wordcloud2",
+            "author": [
+                {
+                    "family": "Lang",
+                    "given": "Dawei"
+                },
+                {
+                    "family": "Chien",
+                    "given": "Guan-tin"
+                }
+            ],
+            "id": "R-wordcloud2",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "note": "R package version 0.2.1",
+            "title": "wordcloud2: Create word cloud by htmlwidget",
+            "title-short": "wordcloud2",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=workflows",
+            "author": [
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                },
+                {
+                    "family": "Couch",
+                    "given": "Simon"
+                }
+            ],
+            "id": "R-workflows",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.1.3",
+            "title": "Workflows: Modeling workflows",
+            "title-short": "Workflows",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=workflowsets",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Couch",
+                    "given": "Simon"
+                }
+            ],
+            "id": "R-workflowsets",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.0.1",
+            "title": "Workflowsets: Create a collection of tidymodels workflows",
+            "title-short": "Workflowsets",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/dmlc/xgboost",
+            "author": [
+                {
+                    "family": "Chen",
+                    "given": "Tianqi"
+                },
+                {
+                    "family": "He",
+                    "given": "Tong"
+                },
+                {
+                    "family": "Benesty",
+                    "given": "Michael"
+                },
+                {
+                    "family": "Khotilovich",
+                    "given": "Vadim"
+                },
+                {
+                    "family": "Tang",
+                    "given": "Yuan"
+                },
+                {
+                    "family": "Cho",
+                    "given": "Hyunsu"
+                },
+                {
+                    "family": "Chen",
+                    "given": "Kailong"
+                },
+                {
+                    "family": "Mitchell",
+                    "given": "Rory"
+                },
+                {
+                    "family": "Cano",
+                    "given": "Ignacio"
+                },
+                {
+                    "family": "Zhou",
+                    "given": "Tianyi"
+                },
+                {
+                    "family": "Li",
+                    "given": "Mu"
+                },
+                {
+                    "family": "Xie",
+                    "given": "Junyuan"
+                },
+                {
+                    "family": "Lin",
+                    "given": "Min"
+                },
+                {
+                    "family": "Geng",
+                    "given": "Yifeng"
+                },
+                {
+                    "family": "Li",
+                    "given": "Yutian"
+                },
+                {
+                    "family": "Yuan",
+                    "given": "Jiaming"
+                }
+            ],
+            "id": "R-xgboost",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.7.5.1",
+            "title": "Xgboost: Extreme gradient boosting",
+            "title-short": "Xgboost",
+            "type": "book"
+        },
+        {
+            "URL": "https://CRAN.R-project.org/package=yardstick",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                },
+                {
+                    "family": "Hvitfeldt",
+                    "given": "Emil"
+                }
+            ],
+            "id": "R-yardstick",
+            "issued": {
+                "date-parts": [
+                    [
+                        2023
+                    ]
+                ]
+            },
+            "note": "R package version 1.2.0",
+            "title": "Yardstick: Tidy characterizations of model performance",
+            "title-short": "Yardstick",
+            "type": "book"
+        },
+        {
+            "ISBN": "978-1138700109",
+            "URL": "https://bookdown.org/yihui/bookdown",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "id": "bookdown2016",
+            "issued": {
+                "date-parts": [
+                    [
+                        2016
+                    ]
+                ]
+            },
+            "publisher": "Chapman; Hall/CRC",
+            "publisher-place": "Boca Raton, Florida",
+            "title": "Bookdown: Authoring books and technical documents with R markdown",
+            "title-short": "Bookdown",
+            "type": "book"
+        },
+        {
+            "DOI": "10.18637/jss.v028.i05",
+            "URL": "https://www.jstatsoft.org/index.php/jss/article/view/v028i05",
+            "author": [
+                {
+                    "literal": "Kuhn"
+                },
+                {
+                    "literal": "Max"
+                }
+            ],
+            "container-title": "Journal of Statistical Software",
+            "id": "caret2008",
+            "issue": "5",
+            "issued": {
+                "date-parts": [
+                    [
+                        2008
+                    ]
+                ]
+            },
+            "page": "1-26",
+            "title": "Building predictive models in r using the caret package",
+            "type": "article-journal",
+            "volume": "28"
+        },
+        {
+            "ISBN": "978-3-319-24277-4",
+            "URL": "https://ggplot2.tidyverse.org",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "ggplot22016",
+            "issued": {
+                "date-parts": [
+                    [
+                        2016
+                    ]
+                ]
+            },
+            "publisher": "Springer-Verlag New York",
+            "title": "ggplot2: Elegant graphics for data analysis",
+            "title-short": "ggplot2",
+            "type": "book"
+        },
+        {
+            "URL": "https://igraph.org",
+            "author": [
+                {
+                    "family": "Csardi",
+                    "given": "Gabor"
+                },
+                {
+                    "family": "Nepusz",
+                    "given": "Tamas"
+                }
+            ],
+            "container-title": "InterJournal",
+            "id": "igraph2006",
+            "issued": {
+                "date-parts": [
+                    [
+                        2006
+                    ]
+                ]
+            },
+            "page": "1695",
+            "title": "The igraph software package for complex network research",
+            "type": "article-journal",
+            "volume": "Complex Systems"
+        },
+        {
+            "DOI": "10.21105/joss.03661",
+            "author": [
+                {
+                    "family": "Couch",
+                    "given": "Simon P."
+                },
+                {
+                    "family": "Bray",
+                    "given": "Andrew P."
+                },
+                {
+                    "family": "Ismay",
+                    "given": "Chester"
+                },
+                {
+                    "family": "Chasnovski",
+                    "given": "Evgeni"
+                },
+                {
+                    "family": "Baumer",
+                    "given": "Benjamin S."
+                },
+                {
+                    "family": "Çetinkaya-Rundel",
+                    "given": "Mine"
+                }
+            ],
+            "container-title": "Journal of Open Source Software",
+            "id": "infer2021",
+            "issue": "65",
+            "issued": {
+                "date-parts": [
+                    [
+                        2021
+                    ]
+                ]
+            },
+            "page": "3661",
+            "title": "infer: An R package for tidyverse-friendly statistical inference",
+            "title-short": "infer",
+            "type": "article-journal",
+            "volume": "6"
+        },
+        {
+            "URL": "https://yihui.org/knitr/",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "edition": "2nd",
+            "id": "knitr2015",
+            "issued": {
+                "date-parts": [
+                    [
+                        2015
+                    ]
+                ]
+            },
+            "note": "ISBN 978-1498716963",
+            "publisher": "Chapman; Hall/CRC",
+            "publisher-place": "Boca Raton, Florida",
+            "title": "Dynamic documents with R and knitr",
+            "type": "book"
+        },
+        {
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                }
+            ],
+            "container-title": "Implementing reproducible computational research",
+            "editor": [
+                {
+                    "family": "Stodden",
+                    "given": "Victoria"
+                },
+                {
+                    "family": "Leisch",
+                    "given": "Friedrich"
+                },
+                {
+                    "family": "Peng",
+                    "given": "Roger D."
+                }
+            ],
+            "id": "knitr2014",
+            "issued": {
+                "date-parts": [
+                    [
+                        2014
+                    ]
+                ]
+            },
+            "note": "ISBN 978-1466561595",
+            "publisher": "Chapman; Hall/CRC",
+            "title": "Knitr: A comprehensive tool for reproducible research in R",
+            "title-short": "Knitr",
+            "type": "chapter"
+        },
+        {
+            "ISBN": "978-0-387-75968-5",
+            "URL": "http://lmdvr.r-forge.r-project.org",
+            "author": [
+                {
+                    "family": "Sarkar",
+                    "given": "Deepayan"
+                }
+            ],
+            "id": "lattice2008",
+            "issued": {
+                "date-parts": [
+                    [
+                        2008
+                    ]
+                ]
+            },
+            "publisher": "Springer",
+            "publisher-place": "New York",
+            "title": "Lattice: Multivariate data visualization with r",
+            "title-short": "Lattice",
+            "type": "book"
+        },
+        {
+            "URL": "https://www.jstatsoft.org/v40/i03/",
+            "author": [
+                {
+                    "family": "Grolemund",
+                    "given": "Garrett"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "container-title": "Journal of Statistical Software",
+            "id": "lubridate2011",
+            "issue": "3",
+            "issued": {
+                "date-parts": [
+                    [
+                        2011
+                    ]
+                ]
+            },
+            "page": "1-25",
+            "title": "Dates and times made easy with lubridate",
+            "type": "article-journal",
+            "volume": "40"
+        },
+        {
+            "URL": "http://www.jstatsoft.org/v21/i12/",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "container-title": "Journal of Statistical Software",
+            "id": "reshape22007",
+            "issue": "12",
+            "issued": {
+                "date-parts": [
+                    [
+                        2007
+                    ]
+                ]
+            },
+            "page": "1-20",
+            "title": "Reshaping data with the reshape package",
+            "type": "article-journal",
+            "volume": "21"
+        },
+        {
+            "ISBN": "9781138359338",
+            "URL": "https://bookdown.org/yihui/rmarkdown",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                },
+                {
+                    "family": "Allaire",
+                    "given": "J. J."
+                },
+                {
+                    "family": "Grolemund",
+                    "given": "Garrett"
+                }
+            ],
+            "id": "rmarkdown2018",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "publisher": "Chapman; Hall/CRC",
+            "publisher-place": "Boca Raton, Florida",
+            "title": "R markdown: The definitive guide",
+            "title-short": "R markdown",
+            "type": "book"
+        },
+        {
+            "ISBN": "9780367563837",
+            "URL": "https://bookdown.org/yihui/rmarkdown-cookbook",
+            "author": [
+                {
+                    "family": "Xie",
+                    "given": "Yihui"
+                },
+                {
+                    "family": "Dervieux",
+                    "given": "Christophe"
+                },
+                {
+                    "family": "Riederer",
+                    "given": "Emily"
+                }
+            ],
+            "id": "rmarkdown2020",
+            "issued": {
+                "date-parts": [
+                    [
+                        2020
+                    ]
+                ]
+            },
+            "publisher": "Chapman; Hall/CRC",
+            "publisher-place": "Boca Raton, Florida",
+            "title": "R markdown cookbook",
+            "type": "book"
+        },
+        {
+            "URL": "http://rocr.bioinf.mpi-sb.mpg.de",
+            "author": [
+                {
+                    "family": "Sing",
+                    "given": "T."
+                },
+                {
+                    "family": "Sander",
+                    "given": "O."
+                },
+                {
+                    "family": "Beerenwinkel",
+                    "given": "N."
+                },
+                {
+                    "family": "Lengauer",
+                    "given": "T."
+                }
+            ],
+            "container-title": "Bioinformatics",
+            "id": "ROCR2005",
+            "issue": "20",
+            "issued": {
+                "date-parts": [
+                    [
+                        2005
+                    ]
+                ]
+            },
+            "page": "7881",
+            "title": "ROCR: Visualizing classifier performance in r",
+            "title-short": "ROCR",
+            "type": "article-journal",
+            "volume": "21"
+        },
+        {
+            "URL": "https://github.com/trinker/sentimentr",
+            "author": [
+                {
+                    "family": "Rinker",
+                    "given": "Tyler W."
+                }
+            ],
+            "id": "sentimentr2021",
+            "issued": {
+                "date-parts": [
+                    [
+                        2021
+                    ]
+                ]
+            },
+            "note": "version 2.9.0",
+            "publisher-place": "Buffalo, New York",
+            "title": "sentimentr: Calculate text polarity sentiment",
+            "title-short": "sentimentr",
+            "type": "book"
+        },
+        {
+            "URL": "https://github.com/trinker/textclean",
+            "author": [
+                {
+                    "family": "Rinker",
+                    "given": "Tyler W."
+                }
+            ],
+            "id": "textclean2018",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "note": "version 0.9.3",
+            "publisher-place": "Buffalo, New York",
+            "title": "textclean: Text cleaning tools",
+            "title-short": "textclean",
+            "type": "book"
+        },
+        {
+            "URL": "https://www.tidymodels.org",
+            "author": [
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                }
+            ],
+            "id": "tidymodels2020",
+            "issued": {
+                "date-parts": [
+                    [
+                        2020
+                    ]
+                ]
+            },
+            "title": "Tidymodels: A collection of packages for modeling and machine learning using tidyverse principles.",
+            "title-short": "Tidymodels",
+            "type": "book"
+        },
+        {
+            "DOI": "10.21105/joss.00037",
+            "URL": "http://dx.doi.org/10.21105/joss.00037",
+            "author": [
+                {
+                    "family": "Silge",
+                    "given": "Julia"
+                },
+                {
+                    "family": "Robinson",
+                    "given": "David"
+                }
+            ],
+            "container-title": "JOSS",
+            "id": "tidytext2016",
+            "issue": "3",
+            "issued": {
+                "date-parts": [
+                    [
+                        2016
+                    ]
+                ]
+            },
+            "publisher": "The Open Journal",
+            "title": "Tidytext: Text mining and analysis using tidy data principles in r",
+            "title-short": "Tidytext",
+            "type": "article-journal",
+            "volume": "1"
+        },
+        {
+            "DOI": "10.21105/joss.01686",
+            "author": [
+                {
+                    "family": "Wickham",
+                    "given": "Hadley"
+                },
+                {
+                    "family": "Averick",
+                    "given": "Mara"
+                },
+                {
+                    "family": "Bryan",
+                    "given": "Jennifer"
+                },
+                {
+                    "family": "Chang",
+                    "given": "Winston"
+                },
+                {
+                    "family": "McGowan",
+                    "given": "Lucy D’Agostino"
+                },
+                {
+                    "family": "François",
+                    "given": "Romain"
+                },
+                {
+                    "family": "Grolemund",
+                    "given": "Garrett"
+                },
+                {
+                    "family": "Hayes",
+                    "given": "Alex"
+                },
+                {
+                    "family": "Henry",
+                    "given": "Lionel"
+                },
+                {
+                    "family": "Hester",
+                    "given": "Jim"
+                },
+                {
+                    "family": "Kuhn",
+                    "given": "Max"
+                },
+                {
+                    "family": "Pedersen",
+                    "given": "Thomas Lin"
+                },
+                {
+                    "family": "Miller",
+                    "given": "Evan"
+                },
+                {
+                    "family": "Bache",
+                    "given": "Stephan Milton"
+                },
+                {
+                    "family": "Müller",
+                    "given": "Kirill"
+                },
+                {
+                    "family": "Ooms",
+                    "given": "Jeroen"
+                },
+                {
+                    "family": "Robinson",
+                    "given": "David"
+                },
+                {
+                    "family": "Seidel",
+                    "given": "Dana Paige"
+                },
+                {
+                    "family": "Spinu",
+                    "given": "Vitalie"
+                },
+                {
+                    "family": "Takahashi",
+                    "given": "Kohske"
+                },
+                {
+                    "family": "Vaughan",
+                    "given": "Davis"
+                },
+                {
+                    "family": "Wilke",
+                    "given": "Claus"
+                },
+                {
+                    "family": "Woo",
+                    "given": "Kara"
+                },
+                {
+                    "family": "Yutani",
+                    "given": "Hiroaki"
+                }
+            ],
+            "container-title": "Journal of Open Source Software",
+            "id": "tidyverse2019",
+            "issue": "43",
+            "issued": {
+                "date-parts": [
+                    [
+                        2019
+                    ]
+                ]
+            },
+            "page": "1686",
+            "title": "Welcome to the tidyverse",
+            "type": "article-journal",
+            "volume": "4"
+        }
+    ],
+    "project_biblios": [
+        "book.bib",
+        "packages.bib"
+    ]
+}

@@ -1,0 +1,25 @@
+--- 
+title: "Machine Learning Application in Industry"
+author: "Algoritma Team"
+date: "`r format(Sys.Date(), '%d, %B %Y')`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+description: This is guide for Product Team Algoritma.
+---
+
+# Introduction
+
+Bookdown berikut ini disusun oleh Tim **Algoritma** yang bertujuan untuk memberikan beberapa contoh *use case* penerapan Machine Learning dalam beberapa industry.
+
+**Algoritma** adalah Data Science Academy yang berlokasi di Jakarta. Algoritma menyediakan beberapa workshop dan training program untuk membantu student ataupun profesional dalam penguasaan berbagai sub-bidang ilmu data meliputi : Data Visualization, Machine Learning, Data Modelling, Statistical Inference, dan lain-lain.
+
+
+```{r include=FALSE}
+# automatically create a bib database for R packages
+knitr::write_bib(c(
+  .packages(), 'bookdown', 'knitr', 'rmarkdown'
+), 'packages.bib')
+```

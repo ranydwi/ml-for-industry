@@ -1,0 +1,3 @@
+"0","set.seed(100)"
+"0","# ctrl <- trainControl(method=""repeatedcv"", number=5, repeats=3)"
+"0","# forest_upc <- train(Churn ~ ., data=up_train, method=""rf"", trControl = ctrl)"

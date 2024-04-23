@@ -1,0 +1,26 @@
+{
+    "id": "055AE956",
+    "path": "~/algo_ml_industry/ml-for-industry/02-finance.Rmd",
+    "project_path": "02-finance.Rmd",
+    "type": "r_markdown",
+    "hash": "273600587",
+    "contents": "",
+    "dirty": false,
+    "created": 1712132367620.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "29,40",
+        "scrollLine": "25"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1712200372,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1712200372925,
+    "read_only": false,
+    "read_only_alternatives": []
+}

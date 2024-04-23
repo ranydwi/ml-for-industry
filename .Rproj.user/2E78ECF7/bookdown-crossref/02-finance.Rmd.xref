@@ -1,0 +1,15 @@
+h1:finance Finance
+h2:credit-risk-analysis Credit Risk Analysis
+h3:background Background
+h3:modelling-analysis Modelling Analysis
+h4:cleaning-data Cleaning data
+h4:exploratory-data-analysis-eda Exploratory Data Analysis (EDA)
+h4:modelling-random-forest Modelling Random Forest
+h4:modelling-xgboost Modelling XGBoost
+h2:evaluating-customer-financial-complaints Evaluating Customer Financial Complaints
+h3:background-1 Background
+h3:exploratory-data-analysis Exploratory Data Analysis
+h3:comparing-sentiment-dictionaries Comparing Sentiment Dictionaries
+h3:correlation-pairs Correlation Pairs
+h2:behaviour-scoring-using-scorecard-prediction Behaviour Scoring Using Scorecard Prediction
+

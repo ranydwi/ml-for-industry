@@ -1,0 +1,4 @@
+"0","customer <- customer %>% "
+"0","            select(-customerID) %>% "
+"0","            na.omit() %>% "
+"0","            mutate(SeniorCitizen = as.factor(SeniorCitizen)) "

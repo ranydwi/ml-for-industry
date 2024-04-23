@@ -1,0 +1,550 @@
+---
+title: "Townhall Needed for Product Team"
+author: "Rany"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(DBI)
+library(odbc)
+library(RMySQL)
+library(RSQLite)
+```
+
+
+# Make a SQL Connection
+
+```{r}
+conn <- dbConnect(
+  MySQL(),
+  host= "pedagogydb.mysql.database.azure.com",
+  user="algoritsql@pedagogydb",
+  password= "J_j5bN\\]p^T3C+H=-@9E@nA3Mz8TTsLG",
+  dbname = "pedagogy",
+  port=3306
+)
+```
+
+# Gather the Data
+
+```{r}
+workshop <- dbGetQuery(conn, "SELECT * FROM workshop")
+response <- dbGetQuery(conn, "SELECT * FROM response")
+employee <- dbGetQuery(conn, "SELECT * FROM employee")
+```
+
+```{r}
+dbListFields(conn, "employee")
+```
+
+```{r}
+dbListFields(conn, "response")
+```
+
+```{r}
+dbListFields(conn, "workshop")
+```
+
+# Collect All Data
+
+```{r}
+F.all <- dbGetQuery(conn, "SELECT workshop.workshop_name, employee.name, workshop.workshop_start, response.difficulty,
+                  response.assistants_score, response.knowledge,response.objectives, response.timeliness,
+                  response.venue_score, response.satisfaction_score, response.comments 
+                  FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  #WHERE employee.name LIKE '%Arkana%'
+                  ")
+tail(F.all)
+```
+
+# Collect Data for Course
+
+Ambil untuk setiap Batch dan Course
+
+```{r}
+x_c1 <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Xion%'
+           AND workshop.workshop_name LIKE '%CIML 1%'
+                  ")
+```
+
+
+```{r}
+x_c2 <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Xion%'
+           AND workshop.workshop_name LIKE '%CIML 2%'
+                  ")
+```
+
+```{r}
+x_ul <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Xion%'
+           AND workshop.workshop_name LIKE '%UL%'
+                  ")
+```
+
+
+```{r}
+x_ts <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Xion%'
+           AND workshop.workshop_name LIKE '%TS%'
+                  ")
+```
+
+```{r}
+x_nn <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Xion%'
+           AND workshop.workshop_name LIKE '%nn%'
+                  ")
+```
+
+```{r}
+y_p4da <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Yoda%'
+           AND workshop.workshop_name LIKE '%p4da%'
+                  ")
+```
+
+```{r}
+y_eda <- dbGetQuery(conn, "SELECT workshop.workshop_name, 
+                   employee.name, 
+                   workshop.workshop_start, 
+                   workshop.workshop_category,
+                   avg(difficulty) as difficulty,
+                   avg(assistants_score) as assistants_score,
+                   avg(knowledge) as knowledge,
+                   avg(objectives) as objectives,
+                   avg(timeliness) as timeliness,
+                   avg(venue_score) as venue_score,
+                   avg(satisfaction_score) as satisfaction_score
+                   FROM response
+                  LEFT JOIN workshop
+                  ON
+                  workshop.id = response.workshop_id
+                  LEFT JOIN employee
+                  ON
+                  employee.id = workshop.workshop_instructor
+                  WHERE workshop.workshop_category LIKE '%Academy%'
+                  AND workshop.workshop_name LIKE '%Yoda%'
+           AND workshop.workshop_name LIKE '%eda%'
+                  ")
+```
+
+
+```{r}
+x_c1_nn <- rbind(x_c1, x_c2, x_ul, x_ts, x_nn)
+x_c1_nn$workshop_name <- gsub(paste("Xion Night Online", collapse='|'),"", x_c1_nn$workshop_name)
+x_c1_nn$workshop_name <- gsub(paste("Xion Night Online", collapse='|'),"", x_c1_nn$workshop_name)
+x_c1_nn$workshop_name <- gsub(paste("Xion Night", collapse='|'),"", x_c1_nn$workshop_name)
+x_c1_nn$batch <- "xion"
+```
+
+```{r}
+y_p4da_eda <- rbind(y_p4da, y_eda)
+y_p4da_eda$workshop_name <- gsub(paste("Yoda Night", collapse='|'),"", y_p4da_eda$workshop_name)
+y_p4da_eda$batch <- "yoda"
+library(dplyr)
+y_p4da_eda <- y_p4da_eda %>%  
+  relocate(batch) %>% mutate(across(where(is.numeric), round, 2)) %>% 
+  select(-c(name, workshop_start, workshop_category))
+```
+
+```{r}
+yoda <- y_p4da_eda
+saveRDS(yoda, "townhall/yoda.RDS")
+```
+
+
+```{r warning=FALSE}
+library(dplyr)
+x_c1_nn <- x_c1_nn %>%  relocate(batch) %>% mutate(across(where(is.numeric), round, 2))
+```
+
+```{r}
+x_c1_nn <- x_c1_nn %>% select(-c(name, workshop_start, workshop_category))
+```
+
+```{r}
+xion <- rbind(xion, x_c1_nn)
+```
+
+Rename supaya sama dengan template Vulcan dan Wizard
+
+```{r}
+unique(xion$workshop_name)
+```
+
+
+```{r}
+xion$workshop_name[xion$workshop_name == "CIML I"] <- " CIML I"
+xion$workshop_name[xion$workshop_name == "CIML II"] <- " CIML II"
+saveRDS(xion, "townhall/xion.RDS")
+```
+
+# Read from RDS 
+
+```{r}
+vulcan <- readRDS("townhall/vulcan.RDS")
+wizard <- readRDS("townhall/wizard.RDS")
+xion <- readRDS("townhall/xion.RDS")
+yoda <- readRDS("townhall/yoda.RDS")
+```
+
+```{r}
+vwx <- rbind(vulcan, wizard, xion)
+wxy <- rbind(wizard, xion, yoda)
+```
+
+Mengurutkan course based on urutan Course
+
+```{r}
+vwx$workshop_name <- factor(vwx$workshop_name, levels = c(" P4DA", " EDA", " DWV", " SQL", " IML 1", " IML 2", " P4DS", " PS", " DV", " IP", " RM", " CIML I", " CIML II", " UL", " TS", " NN"))
+vwx
+
+wxy$workshop_name <- factor(wxy$workshop_name, levels = c(" P4DA", " EDA", " DWV", " SQL", " IML 1", " IML 2", " P4DS", " PS", " DV", " IP", " RM", " CIML I", " CIML II", " UL", " TS", " NN"))
+wxy
+```
+
+# Visualization
+
+## Teaching Assistant
+
+```{r}
+library(ggplot2)
+ggplot(data = vwx, aes(x = workshop_name, y = assistants_score)) +
+  geom_line(aes(group = batch, color = batch), size = 1) +
+  geom_point(aes(color = batch), size = 2) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_colour_manual(values = c("darkred", "red", "orange", "khaki")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(3.8,5), breaks = seq(3.8, 5, by = 0.2)) +
+  labs(title = "Teaching Assistants Score Batch on Batch",
+       subtitle = "Batch Vulcan, Wizard, Xion") +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"))
+#ggsave("objectives.png", objective, width = 8, height = 4.5)
+```
+
+## Satisfaction Score
+
+```{r}
+library(ggplot2)
+ggplot(data = wxy, aes(x = workshop_name, y = satisfaction_score)) +
+  geom_line(aes(group = batch, color = batch), size = 1) +
+  geom_point(aes(color = batch), size = 2) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_colour_manual(values = c("darkred", "red", "orange", "khaki")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(3.8,5), breaks = seq(3.8, 5, by = 0.2)) +
+  labs(title = "Satisfaction Score Batch on Batch",
+       subtitle = "Batch Vulcan, Wizard, Xion") +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"))
+#ggsave("objectives.png", objective, width = 8, height = 4.5)
+```
+
+## Objectives
+
+```{r}
+ggplot(data = vwx, aes(x = workshop_name, y = objectives)) +
+  geom_line(aes(group = batch, color = batch), size = 1) +
+  geom_point(aes(color = batch), size = 2) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_colour_manual(values = c("darkred", "red", "orange", "khaki")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(3.8,5), breaks = seq(3.8, 5, by = 0.2)) +
+  labs(title = "Objectives Score Batch on Batch",
+       subtitle = "Batch Vulcan, Wizard, Xion") +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"))
+```
+
+## Overview on Batch
+
+```{r}
+ggplot(data = xion, mapping = aes(x = satisfaction_score, y = reorder(workshop_name, satisfaction_score))) +
+  geom_col(aes(fill = satisfaction_score), show.legend = F) +
+  scale_fill_gradient(high = "lightsalmon", low = "darkred") +
+  geom_text(aes(label = satisfaction_score), nudge_x = 0.2) +
+  labs(title = "Xion Recap on Each Course",
+       subtitle = "by Overall Satisfaction Score",
+       x = "Score",
+       y = NULL) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"),
+        axis.text.y =  element_text(face = "bold"))
+```
+
+## Overview on Course
+
+Ingin melihat Practical Statistics
+
+```{r}
+library(dplyr)
+PS <- vwx %>% 
+  filter(workshop_name == " PS")
+PS$batch <- factor(PS$batch, levels = c("Vulcan", "wizard", "xion"))
+PS
+```
+
+```{r}
+library(ggplot2)
+ggplot(data = PS, mapping = aes(x = satisfaction_score, y = batch)) +
+  geom_col(aes(fill = satisfaction_score), show.legend = F) +
+  scale_fill_gradient(high = "salmon", low = "darkred") +
+  geom_text(aes(label = satisfaction_score), nudge_x = 0.2) +
+  labs(title = "Practical Statistics Batch on Batch",
+       subtitle = "by Overall Satisfaction Score",
+       x = "Score",
+       y = NULL) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"),
+        axis.text.y =  element_text(size = 12))
+```
+
+## Overview Batch and Course (Comparison)
+
+```{r}
+library(tidyr)
+agg_PS <- PS %>% 
+  pivot_longer(cols = c(timeliness, satisfaction_score),
+               names_to = "variable",
+               values_to = "values") %>% 
+  select(c(batch, variable, values))
+agg_PS
+```
+
+
+```{r}
+library(ggformula)
+ggplot(data = agg_PS, aes(x = batch, y = values, fill = variable)) +
+  geom_col(aes(group = variable), position = "dodge") +
+  geom_line(mapping = aes(y = values, col = variable, group = variable), 
+            size = 1.1, position = position_dodge(width = 1)) +
+  geom_point(mapping = aes(y = values, group = variable), 
+            size = 2, position = position_dodge(width = 1), col = "black") +
+  geom_text(aes(label = values), 
+            position = position_dodge(0.9), vjust = -0.5, size = 4) +
+  #scale_fill_brewer(palette = "Set1") +
+  scale_fill_manual(values = c("red4", "grey")) +
+  scale_colour_manual(values = c("darkred", "grey")) +
+  #scale_color_brewer(palette = "Set1") +
+  #scale_y_continuous(labels = comma, breaks = seq(0,600000,100000), limits = c(0, 500000)) +
+  labs(title = "Practical Statistics Batch on Batch",
+       subtitle = "by Overall Satisfaction & Timeliness Score",
+       x = NULL,
+       y = "score") + 
+  theme_minimal() +
+  theme(axis.text.x =  element_text(size = 12))
+```
+
+-----------------
+
+# Coret-coretan Edit
+
+```{r}
+library(dplyr)
+P4DA <- F.TM %>% filter(grepl('P4DA', workshop_name))
+EDA <- F.TM %>% filter(grepl('EDA', workshop_name))
+DWV <- F.TM %>% filter(grepl('DWV', workshop_name))
+IML_1 <- F.TM %>% filter(grepl('IML 1', workshop_name))
+IML_2 <- F.TM %>% filter(grepl('IML 2', workshop_name))
+P4DS <- F.TM %>% filter(grepl('P4DS', workshop_name))
+PS <- F.TM %>% filter(grepl('PS', workshop_name))
+DV <- F.TM %>% filter(grepl('DV', workshop_name))
+IP <- F.TM %>% filter(grepl('IP', workshop_name))
+RM <- F.TM %>% filter(grepl('RM', workshop_name))
+CM_1 <- F.TM %>% filter(grepl('CIML I', workshop_name))
+CM_2 <- F.TM %>% filter(grepl('CIML II', workshop_name))
+UL <- F.TM %>% filter(grepl('UL', workshop_name))
+TS <- F.TM %>% filter(grepl('TS', workshop_name))
+NN <- F.TM %>% filter(grepl('NN', workshop_name))
+```
+
+```{r}
+data.frame(course = CM_1$workshop_name[1],
+           difficulty = mean(CM_1$difficulty),
+           assistant = mean(CM_1$assistants_score),
+           knowledge = mean(CM_1$knowledge),
+           objective = mean(CM_1$objectives),
+           timeliness = mean(CM_1$venue_score),
+           overall = mean(CM_1$satisfaction_score))
+```
+
+```{r}
+unique(uvw$workshop_name)
+```
+
+```{r}
+x_c1c2 <- rbind(x_c1, x_c2)
+x_c1c2$workshop_name <- gsub(paste("Xion Night Online", collapse='|'),"", x_c1c2$workshop_name)
+x_c1c2$workshop_name <- gsub(paste("Xion Night Online", collapse='|'),"", x_c1c2$workshop_name)
+x_c1c2$batch <- "xion"
+library(dplyr)
+x_c1c2 <- x_c1c2 %>%  relocate(batch) %>% mutate(across(where(is.numeric), round, 2))
+```
+
+
+```{r}
+ultron <- rbind(u_p4da, u_eda, u_dwv, u_sql, u_iml1, u_iml2, u_p4ds, u_ps, u_dv, u_ip, u_rm, u_c1, u_c2, u_ul, u_ts, u_nn) %>% 
+  select(-c(name, workshop_start, workshop_category))
+ultron$workshop_name <- gsub(paste("Ultron Day Online", collapse='|'),"", ultron$workshop_name)
+ultron$workshop_name <- gsub(paste("Ultron Night Online", collapse='|'),"", ultron$workshop_name)
+ultron$batch <- "Ultron"
+```
+
+```{r}
+vulcan <- rbind(v_p4da, v_eda, v_dwv, v_sql, v_iml1, v_iml2, v_p4ds, v_ps, v_dv, v_ip, v_rm, v_c1, v_c2, v_ul, v_ts, v_nn) %>% 
+  select(-c(name, workshop_start, workshop_category))
+vulcan$workshop_name <- gsub(paste("Vulcan Scholarship", collapse='|'),"", vulcan$workshop_name)
+#ultron$workshop_name <- gsub(paste("Ultron Night Online", collapse='|'),"", ultron$workshop_name)
+vulcan$batch <- "Vulcan"
+vulcan <- vulcan %>%  relocate(batch) %>% mutate(across(where(is.numeric), round, 2))
+```
+
+```{r}
+wizard <- rbind(w_p4da, w_eda, w_dwv, w_sql, w_iml1, w_iml2, w_p4ds, w_ps, w_dv, w_ip, w_rm, w_c1, w_c2, w_ul, w_ts, w_nn) %>% 
+  select(-c(name, workshop_start, workshop_category))
+wizard$workshop_name <- gsub(paste("Wizard Day Online", collapse='|'),"", wizard$workshop_name)
+#wizard$workshop_name <- gsub(paste("Ultron Night Online", collapse='|'),"", ultron$workshop_name)
+wizard$batch <- "wizard"
+wizard <- wizard %>%  relocate(batch) %>% mutate(across(where(is.numeric), round, 2))
+```
+
+```{r}
+xion <- rbind(x_p4da, x_eda, x_dwv, x_sql, x_iml1, x_iml2, x_p4ds, x_ps, x_dv, x_ip, x_rm) %>% 
+  select(-c(name, workshop_start, workshop_category))
+xion$workshop_name <- gsub(paste("Xion Day Online", collapse='|'),"", xion$workshop_name)
+xion$workshop_name <- gsub(paste("Xion Night Online", collapse='|'),"", xion$workshop_name)
+xion$workshop_name <- gsub(paste("Xion Night", collapse='|'),"", xion$workshop_name)
+xion$batch <- "xion"
+xion <- xion %>%  relocate(batch) %>% mutate(across(where(is.numeric), round, 2))
+```
+
+```{r}
+xion_new <- xion
+xion_new$mean_all <- rowSums(xion[,3:9])/7
+```
+
+```{r}
+saveRDS(vulcan, "townhall/vulcan.RDS")
+```

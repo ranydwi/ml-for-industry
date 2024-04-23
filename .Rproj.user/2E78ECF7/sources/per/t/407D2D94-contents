@@ -1,0 +1,452 @@
+# Public Health
+
+## Survival Analysis of Patients with Lung Cancer
+
+Kanker paru merupakan kanker pada organ pernapasan yang menjadi kanker pembunuh nomer satu di dunia dan Indonesia (CNN Indonesia, 2018). Data internasional dari *Globocan* 2018 menyatakan kanker paru adalah kanker yang paling banyak ditemukan di pria dan wanita di seluruh dunia dibandingkan jenis kanker lainnya. Pasien penderita kanker paru memerlukan penanganan yang terarah. Oleh karena itu akan dilakukan pengamatan, faktor apa saja yang mempengaruhi waktu ketahanan hidup pasien kanker paru. Metode yang digunakan adalah *survival analysis*, yaitu analisis statistik untuk mengambil keputusan yang berkaitan dengan waktu sampai dengan terjadinya suatu kejadian khusus (*failure event/ end point*). 
+
+Pada bidang studi kanker, hal yang sering jadi perhatian peneliti adalah:
+
+* Berapa probabilitas individu/pasien untuk survive selama 3 tahun?
+* Apakah terdapat perbedaan kemampuan survive antara kelompok demografi pasien?
+
+
+### Import Data
+
+```{r}
+library(tidyverse)
+library(survival)
+library(SurvRegCensCov)
+library(survminer)
+
+options(scipen = 9999)
+```
+
+Data yang digunakan merupakan data dummy rekam medis dari pasien kanker paru-paru. Sebanyak 137 pasien diobservasi dimana 128 mengalami *event* meninggal dan sisanya tersensor (dirujuk ke rumah sakit lain). Durasi waktu pengamatan menggukan satuan hari. 
+
+```{r}
+lung <- read.csv("assets/06-health/data-paru.csv", sep = ";")
+
+glimpse(lung)
+```
+
+Berikut adalah penjelasan mengenai beberapa informasi yang diamati:
+
+1. `treatment`: 1 (*standard*), 2 (*test*)
+2. `cell type`: 1 (*large*), 2 (*adeno*), 3 (*small*), 4 (*squamoues*)
+3. `survival`: waktu pengamatan dalam hari
+4. `status`: 1 (*cencored* / berhasil survive), 0 (meninggal)
+
+Menurut Kementerian Kesehatan, kelompok usia yang paling berisiko tinggi mencakup pasien yang berusia > 40 tahun. Maka, pada data akan dikelompokkan menjadi dua kelompok usia.
+
+
+```{r}
+lung <- lung %>% 
+  rename(time = survival) %>% 
+  mutate(
+    treatment = factor(treatment, levels = c(1,2), labels = c("standard", "test")),
+    cell = factor(cell, levels = c(1,2,3,4), labels = c("large", "adeno","small","squamous")),
+    age = case_when(
+      age > 40 ~ ">40",
+      TRUE ~ "<=40"
+    )
+  )
+```
+
+
+### Exploratory Data Analysis
+
+Variabel prediktor (treatment, age, perform, cell) akan dianalisis menggunakan regresi survival. Dimana akan dilihat faktor-faktor apa saja yang mempengaruhi ketahanan hidup pasien sampai mengalami sebuah *event*: meninggal. Namun sebelumnya akan dianalisis menggunakan pendekatan non parametrik yaitu metode *Kaplan Meier* dan *Log-Rank*. *Kaplan Meier* adalah kurva yang menggambarkan hubungan antara waktu pengamatan (survival) dengan estimasi fungsi survival pada waktu ke-t. Kurva yang terbentuk kemudian dibandingkan menggunakan uji *Log Rank*. Tujuannya untuk mengetahui apakah terdapat perbedaan peluang survive antara level di setiap variabel kategorik.
+
+```{r}
+lung_surv <- survfit(Surv(time = time, event = status) ~ 1, data = lung)
+```
+
+```{r}
+tibble(
+  time = lung_surv$time,
+  n_risk = lung_surv$n.risk,
+  n_event = lung_surv$n.event,
+  survival = lung_surv$surv
+)
+```
+
+Baris pertama output menyatakan pada waktu pengamatan hari pertama, ada 137 pasien, 2 diantaranya meninggal pada saat itu. Peluang survive diperoleh menggunakan perhitungan $(137-2)/137 = 0.985$. Pada garis kedua yang menyatakan observasi di hari ke-2, terdapat 135 pasien, dimana satu orang diantaranya meninggal pada saat itu. Peluang survivalnya diperoleh dengan perhitungan $(135-1)/137 = 0.978$. Tabel informasi diatas jika divisualisasikan tampilannya akan seperti berikut:
+
+```{r}
+ggsurvplot(
+   lung_surv,
+   color = "#2E9FDF",
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves all variable")
+```
+
+Hasil di atas adalah kurva survival untuk kesuluruhan parameter. Sumbu vertikal merupakan peluang survival dan sumbu horizontal adalah waktu pengamatan. Berdasarkan grafik, terlihat jelas bahwa makin jauh waktu pengamatan, peluang survive akan semakin kecil. Masing-masing variabel juga dapat dicari fungsi survivalnya, untuk memperoleh insight apakah tiap kelompok variabel terdapat perbedaan peluang survive yang signifikan.
+
+```{r}
+km_cell <- survfit(Surv(time = time, event = status) ~ cell, data = lung)
+
+ggsurvplot(
+   km_cell,
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves for Cell Type Group")
+```
+
+
+Grafik diatas cukup menjelaskan bahwa keempat kelompok *cell type* memiliki perbedaan garis yang cukup signifikan. Maka, dapat diduga bahwa kelompok *cell type* pada data observasi memiliki perbedaan yang signifikan terhadap status survive pasien kanker paru. Akan dilakukan uji eksak, menggunakan *Log-Rank* untuk memperkuat identifikasi berdasarkan grafik.
+
+
+```{r}
+# log rank cell type
+
+lr_cell <- survdiff(Surv(time ,status)~ cell, data = lung)
+lr_cell
+```
+
+Tingkat signifikansi yang digunakan adalah sebesar 5% (0.05). Berdasarkan uji *Log-Rank*, diperoleh *p-value* (0.0001) < alpha (0.05) maka kesimpulannya terdapat perbedaan yang signifikan pada fungsi survival keempat kelompok *cell*.
+
+
+```{r}
+km_treatment <- survfit(Surv(time = time, event = status) ~ treatment, data = lung)
+
+ggsurvplot(
+   km_treatment,
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves for Treatment group")
+```
+
+
+Pada hasil grafik di atas, antara pria dan wanita memiliki jarak yang berdekatan. Artinya tidak terdapat perbedaan yang signifikan untuk waktu survivalnya. Untuk memperkuat interpretasi berdasarkan grafik, perlu dilakukan uji hipotesis dengan menggunakan perhitungan eksak, yakni metode Log-Rank.
+
+```{r}
+# log rank treatment
+
+lr_treatment <- survdiff(Surv(time ,status)~ treatment, data = lung)
+lr_treatment
+```
+
+Berdasarkan hasil uji *Log-Rank* diperoleh p-value (0.9) > alpha (0.05) sehingga kesimpulannya tidak terdapat perbedaan yang signifikan untuk kelompok variabel treatment. Artinya baik treament standard maupun treatment test, tidak mempengaruhi waktu survive dari pasien. Adapun variabel lainnya, kelompok usia dan kelompok performa setelah di uji menggunakan *Log-Rank* diperoleh kesimpulan yang sama yakni, terdapat perbedaan waktu survive yang signifikan untuk kelompok dua variabel tersebut.
+
+```{r}
+# log rank age
+
+lr_age <- survdiff(Surv(time ,status)~ age, data = lung)
+lr_age
+```
+
+
+```{r}
+# log rank perform
+
+lr_perform <- survdiff(Surv(time ,status)~ perform, data = lung)
+lr_perform
+```
+
+
+
+### Modelling Analysis
+
+Pada analisa sebelumnya, hanya dibandingkan tiap pengamatan pasien terhadap masing-masing variabelnya saja. Kali ini akan di uji apakah pasien kanker paru-paru memiliki tingkat ketahanan hidup (survive) yang berbeda berdasarkan penyebab tipe sel, performa, dan usia pasien. Pemodelan menggunakan pendekatan 2 metode, yaitu regresi weibull dan regresi log logistik. Masing-masing hasil ringkasan informasinya dapat dilihat pada output dibawah:
+
+```{r}
+regweibull <- survreg(Surv(time, status) ~ age + cell + perform, data = lung, dist = "weibull")
+summary(regweibull)
+```
+
+```{r}
+reglog <- survreg(Surv(time, status) ~ age + cell + perform, data = lung, dist = "loglogistic")
+summary(reglog)
+```
+
+Kriteria yang digunakan dalam pemilihan model terbaik dilihat dari nilai *Akaike Information Criterion* (AIC). Model yang lebih layak digunakan ketika nilai AIC yang semakin rendah. AIC sangat berguna saat harus memilih model terbaik dari himpunan data yang sama. AIC yang diperoleh dari masing-masing metode:
+
+```{r}
+AIC(regweibull)
+AIC(reglog)
+```
+
+Model terbaik diperoleh dari model regresi log logistic, dengan AIC paling terendah yaitu 1435,513:
+
+$$S(t|x)=\frac{1}{1 + (exp([-2.0251 + 0.5293_{age} - 0.7763_{cellAdeno} - 0.7438_{cellSmall} - 0.0388_{cellSquamous} + 0.0359_{perform})]*t)^{0.576}}$$
+
+Jika dilakukan simulasi perhitungan peluang survive untuk dua pasien dengan karakteristik:
+
+* Usia 20 tahun, cell Adeno, skor performa = 20;
+* Usia 50 tahun, cell Squamous, skor performa = 70;
+
+pada saat hari ke-100, diperoleh hasil sebagai berikut:
+
+```{r}
+1/(exp(-2.0251 + 0.5293 +  0.7438  + 0.0359 * 70)*100)^0.576
+```
+
+
+```{r}
+# pasien 1
+
+1/(exp(-2.0251 + 0.5293 +  0.7763  + 0.0359 * 70)*100)^0.576
+```
+
+```{r}
+# pasien 2
+
+1/(exp(-2.0251 + 0.5293 +  0.038  + 0.0359 * 70)*100)^0.576
+```
+
+Maka, pasien usia lebih dari 40 tahub dengan tipe cell squamous pada saat 100 hari mengidap kanker paru peluang bertahan hidup (survive) untuk bertahan hidup lebih tinggi dibandingkan dengan tipe adino. 
+
+### Conclusion
+
+Model regresi survival yang sesuai dengan data pengamatan adalah regresi log logistik. Faktor yang signifikan mempengaruhi laju ketahanan hidup pasien paru-paru berdasarkan data yang diamati, antara lain: usia, tipe sel, dan performa. Pasien dengan tipe sel adeno memiliki risiko paling tinggi dibandingkan lainnya. Dengan hasil pemodelan ini harapannya dapat dijadikan kajian awal untuk meningkatkan tingkat ketahanan hidup pasien paru-paru.
+
+## Lung-Based COVID-19 Detection
+
+### Background
+
+*“It is better to light a candle than curse the darkness."*
+
+Nowadays, every country in a corner of the world is still surviving about COVID-19. COVID-19, the worldwide-pandemic, is an issue that need to be highly concerned by everyone. Based on WHO's data, 'till March 2021, the number of COVID-19's survivor in the world is around 127 million people. *Wow, it's a very high number, right?!* 
+
+Like the quote above, we better to light a candle than curse the darkness. Using the power of technology and especially artificial intelligence, we can light the candle in this darkness because of COVID-19 pandemic. *Yay!*
+
+Because of this virus is a new virus and didn't exist before, the researchers is still investigate the symptomps and the affect of COVID-19 to help the health-sector provide the best action to handle this virus. Based on theconversation.com, lungs are the organ most commonly affected by COVID-19, with a spectrum of severe effects. Because of COVID-19, people can have pneumonia, acute respiratory distress syndrome (ARDS), and other respiratory syndrome. Compared to other respiratory viruses, it causes marked clotting in the small blood vessels of the lungs.
+
+So, in this case we want to detect COVID-19 on the human's body by using Lung CT Scan-Images. 
+
+### Data Preparation
+
+Data that used on this case is images from https://www.kaggle.com/luisblanche/covidct. The images are collected from COVID19-related papers from medRxiv, bioRxiv, NEJM, JAMA, Lancet, etc. CTs containing COVID-19 abnormalities are selected by reading the figure captions in the papers. 
+
+We will use Python to processing our data and build the model
+
+#### Import Library
+
+First of all, we need to import library and package that needed on our next modeling
+
+```{python}
+import numpy as np 
+import random
+import pandas as pd 
+import os
+import cv2
+import shutil
+import matplotlib.pyplot as plt
+import math
+import tensorflow as tf
+from glob2 import glob
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+```
+
+#### Import Data
+
+And then, we import the data that we've already downloaded before. Because of our data is images, we use some library like os and glob to connecting and joining our images data.
+
+We have 2 categories of images, lung of image from COVID-19 survivor and not.
+
+```{python}
+data_root='/covidct/'
+path_positive_covid = os.path.join('covidct/CT_COVID/')
+path_negative_covid = os.path.join('covidct/CT_NonCOVID/')
+```
+
+```{python}
+positive_images = glob(os.path.join(path_positive_covid,"*.png"))
+
+negative_images = glob(os.path.join(path_negative_covid,"*.png"))
+negative_images.extend(glob(os.path.join(path_negative_covid,"*.jpg")))
+```
+
+```{python}
+covid = {'class': 'CT_COVID',
+         'path': path_positive_covid,
+         'images': positive_images}
+
+non_covid = {'class': 'CT_NonCOVID',
+             'path': path_negative_covid,
+             'images': negative_images}
+```
+
+### Exploratory Data Analysis
+
+We can check our data detail to make sure that we already import the data properly.
+
+```{python}
+ex_positive = cv2.imread(os.path.join(positive_images[0]))
+ex_negative = cv2.imread(os.path.join(negative_images[0]))
+
+fig = plt.figure(figsize=(10, 10))
+fig.add_subplot(1, 2, 1)
+plt.imshow(ex_positive)
+fig.add_subplot(1,2, 2)
+plt.imshow(ex_negative)
+```
+
+```{python}
+#Check the number of Positive and Negative Cases
+print("Total Positive Cases Covid19 images: {}".format(len(positive_images)))
+print("Total Negative Cases Covid19 images: {}".format(len(negative_images)))
+```
+
+### Modeling
+
+The image classification is a classical problem of image processing, computer vision and machine learning fields. With image classification, machine can classifying an image from a fixed set of categories. One of the techniques that can use for image classification is Convolutional Neural Network (CNN) model. 
+
+**Convolutional Neural Network**
+
+Is a neural network in which at least one layer is a convolutional layer. A typical convolutional neural network consists of some combination of the following layers:
+1. Convolutional layers
+2. Pooling layers
+3. Dense layers
+
+To build this model in this project, the workflow that can be used is :
+1. Data Preparation
+2. Modeling
+3. Evaluation
+
+To building the model, there are several step that will be used :
+1. Data Splitting
+2. Determine The Parameters
+3. Building CNN Model
+
+#### Data Splitting 
+
+In this part, we will separate our data to training data and testing data.
+
+Before that, we need to make our directory or the place that we will use on the splitting data.
+
+```{python}
+dirs  = ['train/', 'test/']
+for subdir in dirs:
+    labeldirs = ['CT_COVID', 'CT_NonCOVID']
+    for labldir in labeldirs:
+        newdir = subdir + labldir
+        os.makedirs(newdir, exist_ok=True)
+```
+
+After that, we copy the images to test set and train set.
+
+```{python}
+# Copy Images to Test Set
+
+random.seed(123)
+test_ratio = 0.1
+for cases in [covid, non_covid]:
+    total_cases = len(cases['images']) 
+    num_to_select = int(test_ratio * total_cases) 
+    print(cases['class'], num_to_select)
+    list_of_random_files = random.sample(cases['images'], num_to_select) 
+    for files in list_of_random_files:
+        shutil.copy2(files, 'test/' + cases['class'])
+```
+
+```{python}
+# Copy Images to Train Set
+for cases in [covid, non_covid]:
+    image_test_files = os.listdir('test/' + cases['class']) # list test files 
+    for images in cases['images']:
+        if images.split('/')[-1] not in (image_test_files): #exclude test files from shutil.copy
+            shutil.copy2(images, 'train/' + cases['class'])
+```
+
+```{python}
+# Combine All Images
+
+total_train_covid = len(os.listdir('train/CT_COVID'))
+total_train_noncovid = len(os.listdir('train/CT_NonCOVID'))
+total_test_covid = len(os.listdir('test/CT_COVID'))
+total_test_noncovid = len(os.listdir('test/CT_NonCOVID'))
+
+print("Train sets images COVID: {}".format(total_train_covid))
+print("Train sets images Non COVID: {}".format(total_train_noncovid))
+print("Test sets images COVID: {}".format(total_test_covid))
+print("Test sets images Non COVID: {}".format(total_test_noncovid))
+```
+
+#### Core Model
+
+To building CNN Model, we need to determine the parameters first.
+
+```{python}
+batch_size = 128
+epochs = 15
+IMG_HEIGHT = 150
+IMG_WIDTH = 150
+```
+
+```{python}
+#Generator Scale for Our Data
+
+train_image_generator = ImageDataGenerator(rescale=1./255)
+test_image_generator = ImageDataGenerator(rescale=1./255) 
+```
+
+```{python}
+train_dir = os.path.join('train')
+test_dir = os.path.join('test')
+
+total_train = total_train_covid + total_train_noncovid
+total_test = total_test_covid + total_test_noncovid
+```
+
+```{python}
+#Collecting Training Data
+
+train_data_gen = train_image_generator.flow_from_directory(batch_size=batch_size,
+                                                           directory=train_dir,
+                                                           shuffle=True,
+                                                           target_size=(IMG_HEIGHT, IMG_WIDTH),
+                                                           class_mode='binary')
+```
+
+```{python}
+#Collecting Testing Data
+
+test_data_gen = test_image_generator.flow_from_directory(batch_size=batch_size,
+                                                              directory=test_dir,
+                                                              target_size=(IMG_HEIGHT, IMG_WIDTH),
+                                                              class_mode='binary')
+```
+
+```{python}
+#Building CNN Model
+
+model = Sequential([
+    Conv2D(16, 3, padding='same', activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH ,3)),
+    MaxPooling2D(),
+    Conv2D(32, 3, padding='same', activation='relu'),
+    MaxPooling2D(),
+    Conv2D(64, 3, padding='same', activation='relu'),
+    MaxPooling2D(),
+    Flatten(),
+    Dense(512, activation='relu'),
+    Dense(1)
+])
+```
+
+```{python}
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+```
+
+In this section, we evaluate the model based on parameter and metrics.
+
+```{python}
+model.summary()
+```
+
+### Conclusion
+
+```{python}
+history = model.fit_generator(
+    train_data_gen,
+    steps_per_epoch=total_train // batch_size,
+    epochs=epochs,
+    validation_data=test_data_gen,
+    validation_steps=total_test // batch_size
+)
+```
+
+Yay, we've already build a model with the high accuracy. This model can help healthcare industry to contribute on COVID-19 issue, to detect COVID-19 patient with lung images
+

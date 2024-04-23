@@ -1,0 +1,2 @@
+"0","#saveRDS(forest_upc,""assets/01-telco/model_caret.rds"")"
+"0","forest_upc <- readRDS(""assets/01-telco/model_caret.rds"")"

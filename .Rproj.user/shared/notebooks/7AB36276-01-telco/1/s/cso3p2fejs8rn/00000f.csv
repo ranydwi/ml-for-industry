@@ -1,0 +1,3 @@
+"0","up_train <- upSample(x = data_train[,-20],"
+"0","                     y = data_train$Churn,"
+"0","                     yname = ""Churn"")"

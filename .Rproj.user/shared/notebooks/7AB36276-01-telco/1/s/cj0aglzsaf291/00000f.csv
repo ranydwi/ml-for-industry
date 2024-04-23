@@ -1,0 +1,4 @@
+"0","set.seed(100)"
+"0","idx <- initial_split(data = customer,prop = 0.8,strata = Churn)"
+"0","data_train <- training(idx)"
+"0","data_test <- testing(idx)"

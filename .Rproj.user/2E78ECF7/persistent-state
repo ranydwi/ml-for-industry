@@ -1,0 +1,8 @@
+build-last-errors="[]"
+build-last-errors-base-dir=""
+build-last-outputs="[{\"type\":0,\"output\":\"==> rmarkdown::render_site(encoding = 'UTF-8')\\n\\n\"},{\"type\":2,\"output\":\"\\r\\n\\r\\nprocessing file: bookmlindustry.Rmd\\r\\n\"},{\"type\":2,\"output\":\"Error in parse_block(g[-1], g[1], params.src, markdown_mode) : \\r\\n  Duplicate chunk label 'setup', which has been used for the chunk:\\r\\n# clear-up the environment\\r\\nrm(list = ls())\\r\\n\\r\\n# chunk options\\r\\nknitr::opts_chunk$set(\\r\\n  message = FALSE,\\r\\n  warning = FALSE,\\r\\n  fig.align = \\\"center\\\",\\r\\n  comment = \\\"#>\\\",\\r\\n  echo = TRUE\\r\\n)\\r\\n\\r\\n# scientific notation\\r\\noptions(scipen = 9999)\\r\\nCalls: local ... process_file -> split_file -> lapply -> FUN -> parse_block\\r\\nExecution halted\\r\\n\"},{\"type\":2,\"output\":\"Error: bookdown::render_book() failed to render the output format 'bookdown::gitbook'.\\r\\nExecution halted\\r\\n\"},{\"type\":2,\"output\":\"\\nExited with status 1.\\n\\n\"}]"
+compile_pdf_state="{\"tab_visible\":false,\"running\":false,\"target_file\":\"\",\"output\":\"\",\"errors\":[]}"
+files.monitored-path=""
+find-in-files-state="{\"handle\":\"\",\"input\":\"\",\"path\":\"\",\"regex\":false,\"ignoreCase\":false,\"results\":{\"file\":[],\"line\":[],\"lineValue\":[],\"matchOn\":[],\"matchOff\":[],\"replaceMatchOn\":[],\"replaceMatchOff\":[]},\"running\":false,\"replace\":false,\"preview\":false,\"gitFlag\":false,\"replacePattern\":\"\"}"
+imageDirtyState="1"
+saveActionState="-1"

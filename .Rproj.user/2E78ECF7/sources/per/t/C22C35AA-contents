@@ -1,0 +1,903 @@
+# Retail
+
+```{r message=F, warning=F, echo=FALSE}
+library(tidyverse)
+library(textclean)
+library(tidytext)
+library(SnowballC)
+library(reshape2)
+library(rsample)
+library(tm)
+library(e1071)
+library(lime)
+library(caret)
+```
+
+##  E-Commerce Clothing Reviews
+
+### Background
+
+Perkembangan teknologi membuat pergeseran perilaku customer dari pembelian offline menjadi pembelian online atau melalui e-commerce. 
+Perbedaan utama saat berbelanja secara online atau offline adalah
+saat akan berbelanja secara online, calon customer tidak dapat memeriksa barang yang akan dibeli secara langsung dan biasanya dibantuk oleh gambar atau deskripsi yang diberikan oleh penjual.
+Tentunya customer akan mencari informasi mengenai produk yang akan dibeli untuk meminimalisir dampak negatif yang didapat. Untuk membantu customer dalam menentukan product yang akan dibeli, mayoritas e-commerce sekarang ini menyediakan fitur online customer review, dimana online customer review ini dijadikan sebagai salah satu media customer mendapatkan informasi tentang produk dari customer yang telah membeli produk tersebut. Meningkatnya e-commerce di Indonesia, kebutuhan analisa mengenai online customer review dirasa perlu dilakukan untuk mendukung agar customer dapat memiliki pengalaman belanja online yang lebih baik daripada belanja offline. Salah satu implementasi data review customer tersebut dapat dimanfaatkan untuk membuat model yang dapat memprediksi apakah product tersebut direkomendasikan atau tidak direkomendasikan. Harapannya setelah perusahaan dapat menilai product mana yang direkomendasikan dan yang tidak direkomendasikan, dapat membantu perusahaan dalam pertimbangan penentuan top seller. Untuk seller yang memiliki banyak product yang direkomendasikan, dapat dijadikan sebagai top seller.
+
+
+```{r}
+reviews <- read.csv("assets/03-retail/Womens Clothing E-Commerce Reviews.csv")
+head(reviews)
+```
+
+Data yang digunakan merupakan data [women e-commerce clothing reviews](https://www.kaggle.com/nicapotato/womens-ecommerce-clothing-reviews). Terdapat dua variabel yang menjadi fokus analisis ini yaitu `Review.Text` dan `Recommended.IND`. Variabel `Review.Text` merupakan review yang diberikan oleh customer terhadap product dari berbagai e-commerce, sedangkan `Recommended.IND` merupakan penilaian rekomendasi dari customer, `1` artinya product tersebut `recommended` dan `0` artinya product tersebut `not recommended`.
+
+Sebelum masuk cleaning data, kita ingin mengetahui proporsi dari target variabel:
+```{r}
+prop.table(table(reviews$Recommended.IND))
+```
+
+### Cleaning Data
+
+Untuk mengolah data text, kita perlu mengubah data teks dari vector menjadi corpus dengan function `Vcorpus()`.
+
+```{r}
+reviews_corpus <- VCorpus(VectorSource(reviews$Review.Text))
+reviews_corpus
+```
+
+Selanjutnya, kita melakukan text cleansing dengan beberapa langkah sebagai berikut:
+
+- `tolower` digunakan untuk mengubah semua karakter menjadi lowercase.
+- `removePunctuation` digunakan untuk menghilangkan semua tanda baca.
+- `removeNumbers` digunakan untuk menghilangkan semua angka.
+- `stopwords` digunakan untuk menghilangkan kata-kata umum (am,and,or,if).
+- `stripWhitespace` digunakan untuk menghapus karakter spasi yang berlebihan.
+
+```{r}
+data_clean <- reviews_corpus %>% 
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removePunctuation) %>% 
+  tm_map(removeNumbers) %>% 
+  tm_map(removeWords, stopwords("en")) %>% 
+  tm_map(content_transformer(stripWhitespace)) 
+inspect(data_clean[[1]])
+```
+
+Setelah melakukan text cleansing, text tersebut akan diubah menjadi Document Term Matrix(DTM) melalui proses tokenization. Tokenization berfungsi memecah 1 teks atau kalimat menjadi beberapa term. Terim bisa berupa 1 kata, 2 kata, dan seterusnya. Pada format DTM, 1 kata akan menjadi 1 feature, secara default nilainya adalah jumlah kata pada dokumen tersebut. 
+```{r}
+dtm_text <- DocumentTermMatrix(data_clean)
+```
+
+Sebelum membentuk model, tentunya kita perlu split data menjadi data train dan data test dengan proporsi 80:20.
+```{r}
+set.seed(100)
+idx <- sample(nrow(dtm_text), nrow(dtm_text)*0.8)
+train <- dtm_text[idx,]
+test <- dtm_text[-idx,]
+train_label <- reviews[idx,"Recommended.IND"]
+test_label <-  reviews[-idx,"Recommended.IND"]
+```
+
+Term yang digunakan pada model ini, kita hanya mengambil term yang muncul paling sedikit 100 kali dari seluruh observasi dengan `findFreqTerms()`.
+```{r}
+freq <- findFreqTerms(dtm_text, 100)
+train_r <- train[, freq]
+test_r <- test[, freq]
+
+inspect(train_r)
+```
+
+Nilai dari setiap matrix masih berupa angka numerik, dengan range 0-inf. Naive bayes akan memiliki performa lebih bagus ketika variabel numerik diubah menjadi kategorik. Salah satu caranya dengan Bernoulli Converter, yaitu jika jumlah kata yang muncul lebih dari 1, maka kita akan anggap nilainya adalah 1, jika 0 artinya tidak ada kata tersebut.
+```{r}
+bernoulli_conv <- function(x){
+  x <- as.factor(ifelse(x > 0, 1, 0))
+  return(x)
+}
+
+train.bern <- apply(train_r, MARGIN = 2, FUN = bernoulli_conv)
+test.bern <- apply(test_r, MARGIN = 2, FUN = bernoulli_conv)
+```
+
+### Modelling
+
+Selanjutnya, pembentukan model menggunakan naive bayes dan diikuti dengan prediksi data test.
+```{r}
+model.nb <- naiveBayes(x = train.bern, 
+                       y = as.factor(train_label), 
+                       laplace = 1)
+pred.nb <- predict(object = model.nb, newdata= test.bern)
+```
+
+Dai hasil prediksi data test, kita akan menampilkan Confusion Matrix untuk mengetahui performa model.
+```{r}
+confusionMatrix(data = as.factor(pred.nb),
+                reference = as.factor(test_label),
+                positive = "1")
+```
+
+### Visualize Data Text
+
+Selanjutnya, kita akan coba lakukan prediksi terhadap data test dan juga menampilkan visualisasi text tersebut menggunakan package lime.
+
+```{r}
+set.seed(100)
+idx <- sample(nrow(reviews), nrow(reviews)*0.8)
+train_lime <- reviews[idx,]
+test_lime <- reviews[-idx,]
+```
+
+```{r}
+tokenize_text <- function(text){
+  
+  #create corpus
+  
+  data_corpus <- VCorpus(VectorSource(text))
+  
+  # cleansing
+  data_clean <- data_corpus %>% 
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removePunctuation) %>% 
+  tm_map(removeNumbers) %>% 
+  tm_map(removeWords, stopwords("en")) %>% 
+  tm_map(content_transformer(stripWhitespace)) 
+  
+  #dtm
+  dtm_text <- DocumentTermMatrix(data_clean)
+
+  #convert to bernoulli
+  data_text <- apply(dtm_text, MARGIN = 2, FUN = bernoulli_conv)
+  
+  return(data_text)
+}
+```
+
+
+```{r}
+model_type.naiveBayes <- function(x){
+  return("classification")
+}
+
+predict_model.naiveBayes <- function(x, newdata, type = "raw") {
+
+    # return classification probabilities only   
+    res <- predict(x, newdata, type = "raw") %>% as.data.frame()
+    
+    return(res)
+}
+
+text_train <- train_lime$Review.Text %>% 
+              as.character()
+
+```
+
+```{r}
+explainer <- lime(text_train,
+                  model = model.nb,
+                  preprocess = tokenize_text)
+```
+
+```{r}
+text_test <- test_lime$Review.Text %>% 
+            as.character()
+
+set.seed(100)
+explanation <- explain(text_test[5:10],
+                       explainer = explainer,
+                       n_labels =1,
+                       n_features = 50,
+                       single_explanation = F)
+
+```
+
+```{r}
+plot_text_explanations(explanation)
+```
+
+Dari hasil output observasi kedua terprediksi product tersebut recommended dengan probability 96.31% dan nilai explainer fit menunjukkan seberapa baik LIME dalam menginterpretasikan prediksi untuk observasi ini sebesar 0.89 artinya dapat dikatakan cukup akurat. Teks berlabel biru menunjukkan kata tersebut meningkatkan kemungkinan product tersebut untuk direkomendasikan, sedangkan teks berlabel merah berarti bahwa kata tersebut bertentangan/mengurangi kemungkinan product tersebut untuk direkomendasikan.
+
+##  Customer Segmentation with RFM Analysis (in Python Programming Language)
+
+
+```{r echo=FALSE}
+library(reticulate)
+reticulate::use_python(python = '/Users/ariqleesta/opt/anaconda3/envs/ariq/bin/python', required = T)
+sys <- import("sys")
+py_run_string("import os")
+py_run_string("os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = '/Users/ariqleesta/opt/anaconda3/plugins/platforms'")
+```
+
+
+
+### Background
+
+Dalam transaksi jual beli, customer memiliki peran penting dalam eksistensi dan kemajuan sebuah industri. Oleh karenanya berbagai strategi marketing dilakukan untuk menarik perhatian customer baru atau untuk mempertahankan loyalitas customer. 
+Cara yang paling umum dilakukan adalah pemberian diskon pada product tertentu atau pemberian free product untuk customer tertentu. Strategi marketing ini diterapkan sesuai dengan value yang dimiliki oleh customer. Beberapa value dapat dikategorikan menjadi `low-value customer` (customer dengan frekuensi transaksi rendah dan *spend money* rendah), `medium-value customer` (customer dengan frekuensi transaksi tinggi namun *spend money* rendah atau sebaliknya), dan `high-value customer` (customer dengan frekuensi transaksi tinggi dan *spend money* yang tinggi pula).
+
+Dalam melakukan segmentasi customer ada beberapa faktor yang harus dipertimbangkan. Faktor tersebut umumnya dianalisis berdasarkan data historical transaksi yang dimiliki oleh customer. Dari data historical tersebut dilakukan analisis lebih lanjut untuk mengetahui pattern data dan kemudian dilakukan modelling dengan bantuan algoritma machine learning agar menghasilkan output yang dapat dipertanggungjawabkan. Rangkaian proses ini nantinya diharapkan dapat menjawab beberapa pertanyaan bisnis seperti : 
+`Siapakah customer yang berpotensi untuk *churn*`, `Siapakah loyal customer`, `Siapakah potential customer`, dan lain-lain.
+
+Metode segmentasi yang paling umum digunakan untuk melakukan segmentasi customer adalah RFM analysis. RFM akan melakukan segmentasi berdasarkan 3 poin penting yaitu :
+
+1. Recency : Waktu transaksi terakhir yang dilakukan customer
+2. Frequency : Banyak transaksi yang dilakukan oleh customer
+3. Monetary : Banyak uang yang dikeluarkan ketika melakukan transaksi
+
+Dalam artikel ini, akan dibahas lebih lanjut tentang proses segmentasi customer menggunakan metode RFM dengan bantuan machine learning clustering algorithm. Bahasa yang digunakan adalah bahasa pemrograman python.
+
+```{r out.width="70%", fig.align='center', echo=FALSE}
+knitr::include_graphics("assets/03-retail/RFM.png")
+```
+
+### Modelling Analysis
+
+Pada artikel ini data yang digunakan adalah data online retail di UK yang dapat ditemukan pada [link berikut](https://www.kaggle.com/carrie1/ecommerce-data). Data ini adalah data transaksi yang terjadi pada 01/12/2010 sampai 09/12/2011.
+
+#### Import Library and Read Data
+
+```{python}
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+```{python}
+ecom = pd.read_csv("assets/03-retail/data_ecom_uk.csv",encoding='latin1')
+```
+
+```{python}
+ecom.head(2)
+```
+
+```{python}
+ecom.shape
+```
+
+Dataframe ini mengandung 541909 observasi dengan jumlah kolom sebanyak 8 yang antara lain adalah :
+
+* InvoiceNo : Nomor invoice yang terdiri dari 6 digit angka unik. Ketika `InvoiceNo` diawali dengan character `C` maka mengindikasikan *cancellation transaction*.
+* StockCode : Kode product yang terdiri dari 5 digit angka unik.
+* Description : Deskripsi nama product.
+* Quantity : Jumlah product yang dibeli pada setiap transaksi.
+* InvoiceDate : Tanggal transaksi berlangsung.
+* UnitPrice : Harga satuan product.
+* CustomerID : ID Customer yang berisi 5 digit angka unik dan berbeda pada setiap customer.
+* Country : Nama negara.
+
+#### Get only transaction in UK
+
+Dikarenakan terdapat beberapa data yang tidak berada pada country United Kingdom (UK), maka perlu dilakukan filter data hanya untuk country daerah UK.
+
+```{python}
+ecom_uk = ecom[ecom['Country']=='United Kingdom']
+ecom_uk.shape
+```
+
+```{python}
+ecom_uk.head(2)
+```
+
+#### Handle Missing Values
+
+Missing value adalah masalah yang umum dihadapi ketika melakukan proses pengolahan data. Missing value terjadi ketika terdapat obeservasi kosong pada sebuah data. 
+
+Pada hasil di bawah ini dapat diketahui informasi bahwa beberapa variable pada data menggandung nilai missing, variable tersebut antara lain adalah `Description` dan `CustomerID`. `CustomerID` adalah variable penting dalam RFM analisis, dikarenakan `CustomerID` mengandung informasi unik ID member. Sedangkan `Description` mengandung informasi terkait deskripsi produk. Jika ditelaah lebih jauh, untuk menangani missing values pada kedua variable tersebut dapat dilakukan dengan cara *deletion*, dikarenakan proses imputasi pada kedua variable tersebut akan menghasilkan informasi yang tidak akurat.
+
+```{python}
+ecom_uk.isna().sum()
+```
+
+Berikut ini adalah proses penghapusan missing values pada data :
+
+```{python}
+ecom_uk.dropna(inplace=True)
+```
+
+#### Select Unique Transaction
+
+Duplicated values atau duplikasi data adalah nilai berulang pada satu atau lebih observasi. Untuk menangani data yang duplikat dapat dilakukan penghapusan dan hanya mempertahankan salah satu observasi.
+
+```{python}
+ecom_uk.drop_duplicates(subset=['InvoiceNo', 'CustomerID'], keep="first", inplace=True)
+```
+
+#### Change Data Types
+
+Dalam pengolahan data transformasi tipe data pada format yang sesuai sangat penting untuk dilakukan, hal ini agar nantinya data-data tersebut siap untuk dilakukan manipulasi lebih lanjut.
+
+```{python}
+ecom_uk.dtypes
+```
+
+```{python}
+ecom_uk['InvoiceDate'] = pd.to_datetime(ecom_uk['InvoiceDate'])
+ecom_uk['Country'] = ecom_uk['Country'].astype('category')
+ecom_uk['CustomerID'] = ecom_uk['CustomerID'].astype('int64')
+```
+
+#### Drop cancelled transaction
+
+Karakter pertama "C" pada `InvoiceNo` menunjukkan bahwa customer melakukan pembatalan terhadap transaksi yang dilakukan. Sehingga data akan kurang relevan jika tetap dipertahankan, maka dari itu perlu dilakukan penghapusan pada observasi tersebut.
+
+```{python}
+ecom_uk = ecom_uk.loc[~ecom_uk.iloc[:,0].str.contains(r'C')]
+```
+
+```{python}
+ecom_uk.head()
+```
+
+### Exploratory Data Analysis
+
+Tahapan Exploratory Data Analysis digunakan untuk mengetahui pattern dari data.
+
+#### Recency
+
+Recency adalah faktor yang menyimpan informasi tentang berapa lama sejak customer melakukan pembelian. Untuk melakukan perhitungan recency pada masing-masing customer dapat dilakukan dengan cara memanipulasi tanggal transaksi customer dan kemudian dikurangi dengan tanggal maksimum yang terdapat pada data. Berikut di bawah ini adalah detail langkah-langkahnya :
+
+a. Manipulasi tanggal transaksi dengan mengekstrak informasi tanggal, bulan dan tahun transaksi.
+
+```{python}
+ecom_uk['Date'] = ecom_uk['InvoiceDate'].dt.date
+```
+
+```{python}
+ecom_uk.head(2)
+```
+
+b. Mengambil tanggal transaksi maksimum pada keseluruhan observasi
+
+```{python}
+last_trans = ecom_uk['Date'].max()
+last_trans
+```
+
+c. Mengekstrak informasi tanggal transaksi maksimum pada tiap customer.
+
+```{python}
+recent = ecom_uk.groupby(by=['CustomerID'],  as_index=False)['Date'].max()
+```
+
+```{python}
+recent.columns = ['CustomerID','Last Transaction']
+recent.head()
+```
+
+d. Menghitung selisih tanggal transaksi maksimum dengan tanggal transaksi terakhir pada tiap customer, kemudian menyimpan jumlah hari pada kolom `Days Recent`.
+
+```{python}
+recent['Days Recent'] = last_trans - recent['Last Transaction']
+recent['Days Recent'] = recent['Days Recent'].dt.days
+```
+
+```{python}
+recent.head()
+```
+
+```{python}
+recent.drop(columns=['Last Transaction'], inplace=True)
+```
+
+#### Frequency
+
+Frequency mengandung infromasi tentang seberapa sering customer melakukan transaksi pembelian dalam kurun waktu tertentu. Nilai frequency dapat diperoleh dengan cara menghitung jumlah transkasi pada setiap unik customer.
+
+```{python}
+temp = ecom_uk[['CustomerID','InvoiceNo']]
+```
+
+```{python}
+trans_cust = temp.groupby(by=['CustomerID']).count()
+trans_cust.rename(columns={'InvoiceNo':'Number of Transaction'})
+trans_cust.reset_index()
+```
+
+Ouptut di atas menunjukkan jumlah transaksi yang dilakukan pada masing-masing customer. CustomerID 12346 melakukan transaksi sebanyak 1 kali saja, CustomerID 12747 melakukan transaksi sebanyak 11 kali, dan seterusnya.
+
+Berikut dibawah ini adalah detail informasi `InvoiceNo` pada setiap transaksi yang dilakukan oleh customer.
+
+```{python}
+table_trans_details = temp.groupby(by=['CustomerID','InvoiceNo']).count()
+```
+
+```{python}
+table_trans_details.head()
+```
+
+#### Monetary
+
+Monetary adalah faktor yang menyimpan jumlah pengeluaran customer dalam transaksi. Nilai monetary dapat dihitung dari harga barang yang dibeli oleh masing-masing customer pada transaksi tertentu dan kemudian dikalkulasikan dengan jumlah barang yang dibeli.
+
+```{python}
+ecom_uk['Total'] = ecom_uk['UnitPrice'] * ecom_uk['Quantity']
+ecom_uk.head(2)
+```
+
+```{python}
+monetary = ecom_uk.groupby(by=['CustomerID'], as_index=False)['Total'].sum()
+```
+
+```{python}
+monetary
+```
+
+#### Merge Column based on CustomerID
+
+Setelah mendapatkan informasi pada setiap faktor penting, langkah selanjutnya adalah menyimpannya kedalam sebuah dataframe baru.
+
+```{python}
+new_ = monetary.merge(trans_cust,on='CustomerID')
+new_data = new_.merge(recent,on='CustomerID')
+new_data.rename(columns={'Total':'Monetary','InvoiceNo':'Frequency','Days Recent':'Recency'}, inplace=True)
+new_data.head()
+```
+
+### Modelling
+
+#### Clustering Recency, Frequency, and Monetary
+
+Proses clustering bertujuan untuk membagi level customer kedalam beberapa segment tertentu meliputi `low-value customer`, `medium-value customer` or `high-value customer`.
+
+#### Recency
+
+Pada faktor Recency, customer yang memiliki *recent* trasaksi akan di kategorikan pada `high-value customer`. Kenapa? Karena customer tersebut berpotensi untuk melakukan pembelian lagi dibanding dengan customer yang sudah lama tidak melakukan pembelian. 
+
+```{python}
+new_data['Recency'].describe()
+```
+
+Teknik elbow mwthod untuk menentukan jumlah cluster yang terbentuk.
+
+```{python}
+from sklearn.cluster import KMeans
+
+
+sse={}
+recency = new_data[['Recency']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(recency)
+    recency["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Recency']])
+new_data['RecencyCluster'] = kmeans.predict(new_data[['Recency']])
+```
+
+```{python}
+new_data.groupby('RecencyCluster')['Recency'].describe()
+```
+
+Berdasarkan visualisasi grafik elbow, maka jumlah cluster ideal yang dapat dibentuk adalah sebanyak 3 cluster. Pada hasil di atas menunjukkan bahwa cluster 1 mengandung informasi customer yang melakukan transaksi paling baru (most recent) sedangkan cluster 0 mengandung informasi customer yang sudah lama tidak melakukan transaksi pembelian. 
+
+Untuk keperluan standarisasi, maka perlu dilakukan re-order cluster sehingga cluster 0 akan memuat informasi `low-value customer`, cluster 1 `medium-value customer` dan cluster 2 `high-value customer`.
+Dikarenakan step ini adalah step Recency, maka cluster yang memiliki nilai recency rendah akan dikategorikan pada cluster 2.
+
+Dibawah ini adalah fungsi untuk melakukan reorder cluster :
+
+```{python}
+#function for ordering cluster numbers
+def order_cluster(cluster_field_name, target_field_name,df,ascending):
+    new_cluster_field_name = 'new_' + cluster_field_name
+    df_new = df.groupby(cluster_field_name)[target_field_name].mean().reset_index()
+    df_new = df_new.sort_values(by=target_field_name,ascending=ascending).reset_index(drop=True)
+    df_new['index'] = df_new.index
+    df_final = pd.merge(df,df_new[[cluster_field_name,'index']], on=cluster_field_name)
+    df_final = df_final.drop([cluster_field_name],axis=1)
+    df_final = df_final.rename(columns={"index":cluster_field_name})
+    return df_final
+```
+
+```{python}
+new_data = order_cluster('RecencyCluster', 'Recency',new_data,False)
+```
+
+#### Frequency
+
+Factor penting selanjutnya adalah Frequency. Pada step frequency, customer yang memiliki banyak transaksi pembelian akan dikategorikan pada level `high-value customer`.
+
+```{python}
+new_data['Frequency'].describe()
+```
+
+```{python}
+sse={}
+frequency = new_data[['Frequency']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(frequency)
+    frequency["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Frequency']])
+new_data['FrequencyCluster'] = kmeans.predict(new_data[['Frequency']])
+new_data.groupby('FrequencyCluster')['Frequency'].describe()
+```
+
+Sama halnya dengan tahapan pada step Recency, pada step ini juga perlu dilakukan standarisasi cluster dengan melakukan reorder pada cluster. Sehingga cluster 0 dengan nilai frequency yang rendah akan dikategorikan pada level `low-value customer` sedangkan cluster 2 dengan nilai frequency tinggi akan dikategorikan pada level `high-values customer`.
+
+```{python}
+new_data = order_cluster('FrequencyCluster', 'Frequency',new_data,True)
+```
+
+#### Monetary
+
+Faktor penting terakhir pada RFM analysis adalah Monetary. Customer dengan nilai monetary yang tinggi akan dikategorikan pada level `high-value customer` dikarenakan berkontribusi besar dalam pendapatan yang dihasilkan industry.
+
+```{python}
+new_data['Monetary'].describe()
+```
+
+```{python}
+sse={}
+monetary_ = new_data[['Monetary']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(monetary_)
+    monetary_["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Monetary']])
+new_data['MonetaryCluster'] = kmeans.predict(new_data[['Monetary']])
+new_data.groupby('MonetaryCluster')['Monetary'].describe()
+```
+
+Reorder cluster untuk standarisasi cluster sehingga cluster 0 dengan nilai monetary rendah akan dikategorikan dalam `low-value customer` sedangkan cluster 2 dengan nilai monetary tinggi akan dikelompokkan pada `high-values customer`.
+
+```{python}
+new_data = order_cluster('MonetaryCluster', 'Monetary',new_data,True)
+```
+
+#### Segmentation Customer based on Cluster
+
+Setelah memperoleh nilai cluster terurut pada setiap observasi data, langkah selanjutnya adalah memberikan label pada masing-masing observasi. Label ini bertujuan untuk mengidentifikasi level pada masing-masing customer apakah tergolong pada `low-value customer`, `medium-value customer` atau `high-value customer`.
+
+Proses pelabelan terdiri dari beberapa tahapan yang antara lain adalah :
+
+```{python}
+new_data.head()
+```
+
+a. Menghitung score pada masing-masing observasi dengan melakukan penjumlahan pada nilai cluster.  
+
+```{python}
+new_data['Score'] = new_data['RecencyCluster'] + new_data['FrequencyCluster'] + new_data['MonetaryCluster']
+new_data.head(2)
+```
+
+```{python}
+print(new_data['Score'].min())
+print(new_data['Score'].max())
+```
+
+Dari hasil di atas diperoleh informasi bahwa minimum score pada data adalah 0, sedangkan maksimum value pada data adalah 4. Sehingga untuk segmentasi label dapat dikategorikan berdasarkan ketentuan berikut :
+
+* Customer dengan score <= 1 akan masuk dalam kategori `low-value customer`
+* Customer dengan score <= 3 akan masuk dalam kategori `medium-value customer`
+* Customer dengan score > 3 akan masuk dalam kategori `high-value customer`
+
+```{python}
+label = []
+
+def label_(data) :
+    if data <= 1 :
+        lab = "Low"
+    elif data <= 3 :
+        lab = "Medium"
+    else :
+        lab = "High"
+    label.append(lab)
+```
+
+```{python}
+new_data['Score'].apply(label_)
+```
+
+```{python}
+new_data['Label'] = label
+```
+
+```{python}
+new_data.head(2)
+```
+
+### Customer's behavior in each factor based on their label
+
+Setelah memberikan label pada masing-masing customer, apakah sudah cukup membantu untuk tim management dalam menentukan strategi marketing yang tepat? Jawabannya dapat Ya atau Tidak. Tidak dikarenakan management perlu untuk mengetahui informasi detail dari behavior (kebiasaan) customer pada setiap level dalam melakukan pembelanjaan. Oleh karena itu, sebelum melangkah lebih jauh, terlebih dahulu lakukan behavior analisis sebagai berikut :
+
+```{python}
+import numpy as np
+
+def neg_to_zero(x):
+    if x <= 0:
+        return 1
+    else:
+        return x
+
+new_data['Recency'] = [neg_to_zero(x) for x in new_data.Recency]
+new_data['Monetary'] = [neg_to_zero(x) for x in new_data.Monetary]
+
+rfm_log = new_data[['Recency', 'Frequency', 'Monetary']].apply(np.log, axis = 1).round(3)
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler
+    
+scaler = StandardScaler()
+rfm_scaled = scaler.fit_transform(rfm_log)
+
+rfm_scaled = pd.DataFrame(rfm_scaled, index = new_data.index, columns = rfm_log.columns)
+```
+
+```{python}
+rfm_scaled.head()
+```
+
+```{python}
+rfm_scaled['Label'] = new_data.Label
+rfm_scaled['CustomerID'] = new_data.CustomerID
+```
+
+```{python}
+rfm_scaled
+```
+
+```{python}
+rfm_melted = pd.melt(frame= rfm_scaled, id_vars= ['CustomerID', 'Label'], \
+                     var_name = 'Metrics', value_name = 'Value')
+```
+
+```{python}
+rfm_melted
+```
+
+Visualisasi behavior customer pada setiap level.
+
+```{python}
+import seaborn as sns
+
+# a snake plot with RFM
+sns.lineplot(x = 'Metrics', y = 'Value', hue = 'Label', data = rfm_melted)
+plt.title('Customer Behavior based on their Label')
+plt.legend(loc = 'upper right')
+```
+
+Berdasarkan visualisasi di atas diperoleh detail informasi bahwa :
+
+1. Customer dengan `high-value` labels memiliki kecenderungan untuk menghabiskan banyak uang dalam berbelanja (high monetary) dan sering melakukan pembelanjaan (high frequency)
+2. Customer dengan `medium-value` labels tidak terlalu sering melakukan pembelian dan juga tidak banyak menghabiskan uang selama transaksi.
+3. Customer dengan `low-value` labels hanya menghabiskan sedikit uang selama berbelanja, tidak terlalu sering berbelanja, tetapi  memiliki nilai recency yang cukup tinggi dibandingkan level lainnya.
+
+Berdasarkan rules di atas, pihak management dapat mempertimbangkan melakukan strategi marketing dengan cara :
+
+1. Memberikan special promotion atau discount untuk `low-value` customer yang baru-baru saja berkunjung untuk berbelanja, sehingga mereka tertarik untuk berbelanja lagi di lain waktu.
+2. Mempertahankan `medium-value` customer dengan cara memberikan cashback pada pembeliannya.
+3. Memberikan reward pada loyal customer (`high-value`) dengan cara memberikan free product atau cashback pada pembelanjaannya.
+
+### Conclusion
+
+RFM analysis adalah teknik yang umum digunakan untuk melakukan segmentasi terhadap customer berdasarkan value dan behavior selama bertransaksi. Teknik ini sangat membantu pihak management khususnya marketing team dalam menentukan strategi bisnis yang cocok untuk mempertahankan loyal customer dan menarik customer baru.
+
+## Feature Recommendation on Mobile Games
+
+### Background
+
+Dalam suatu proses bisnis, pemberian fasilitas atau fitur produk yang sesuai dengan kebutuhan dan kenyamanan user atau customer adalah hal yang penting untuk diperhatikan. Salah satu cara untuk mengetahui minat user adalah dengan melakukan A/B Testing. Di A/B Testing, terdapat 2 grup A dan B yang diberikan perlakuan yang berbeda yang kemudian akan dibandingkan performansi dari masing-masing grup. 
+
+Pada artikel ini, digunakan data dari kaggle (https://www.kaggle.com/yufengsui/mobile-games-ab-testing) untuk melakukan proses A/B Testing. Data ini berisi tentang perilaku user pada Mobile Games yang berjudul Cookie Cats. Cookie Cats merupakan permainan populer yang dikembangkan oleh  Tactile Entertainment. 
+
+Pada saat pemain melalui level-level dalam game, mereka terkadang akan menemukan gate yang memaksa mereka untuk menunggu waktu tertentu atau melakukan pembelian dalam aplikasi untuk melanjutkan permainan. Selain mendorong pembelian dalam aplikasi, gate ini juga memiliki tujuan untuk memberikan pemain istirahat dari bermain game. Sehingga dapat meningkatkan dan memperpanjang kenyamanan pemain dalam bermain game.
+
+Nah, tetapi di manakah gate itu perlu ditempatkan? Pada awalnya, gate ditempatkan di level 30. Akan tetapi perusahaan akan mencoba untuk melakukan pemindahan gate tersebut di Cookie Cats dari level 30 ke level 40. Untuk melakukan eksperimen tersebut, perusahaan memutuskan melakukan A/B Testing dan melakukan analisis apakah pemindahan tersebut berpengaruh pada kenyamanan pemain atau tidak.
+
+### Data Preparation
+
+Sebelum melakukan pemodelan, perlu dilakukan persiapan data. Data yang dipersiapkan dipastikan telah memiliki kualitas yang baik agara model yang dibangun nantinya juga model yang baik.
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{python}
+df=pd.read_csv('assets/03-retail/cookie_cats.csv')
+```
+
+```{python}
+df.head()
+```
+
+Data ini diambil dari 90.189 pemain yang melakukan instalasi pada game pada saat A/B Testing dijalankan.
+
+Variabel-variabelnya adalah :
+1. userid - nomor unik yang mengidentifikasikan setiap pemain.
+2. version - kategori apakah pemain diletakkan di the control group (gate_30 - a gate at level 30) atau di grup dengan gate yang berpindah (gate_40 - a gate at level 40).
+3. sum_gamerounds - banyaknya ronde permainan yang dimainkan pemain selama 14 hari pertama setelah instalasi. 
+4. retention_1 - apakah pemain datang kembali dan main pada saat 1 hari setelah melakukan instalasi? 
+5. retention_7 - apakah pemain datang kembali dan main pada saat 7 hari setelah melakukan instalasi? 
+
+### Exploratory Data Analysis
+
+Mari melakukan eksplorasi pada data yang kita punya untuk lebih memahaminya!
+
+```{python}
+# EDA
+
+df.groupby("version")['sum_gamerounds'].agg(["min", "max", pd.Series.mode, "median", "mean", "std", "count"])
+```
+
+```{python}
+#memeriksa ilustrasi distribusi data
+
+def plot_distribution(dataframe):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    sns.histplot(dataframe, x="sum_gamerounds", label='histogram', multiple="dodge", hue="version",
+                 shrink=.8, binwidth=10, ax=axes[0])
+    sns.boxplot(x=dataframe['version'], y=dataframe['sum_gamerounds'], ax=axes[1])
+
+    axes[0].set_xlim(0, 200)
+    axes[1].set_yscale('log')
+    axes[0].set_title('Distribution histogram', fontsize=14)
+    axes[1].set_title('Distribution version', fontsize=14)
+    plt.show()
+```
+
+```{python}
+plot_distribution(df)
+```
+
+Dari summary dan visualisasi data, dapat dilihat bahwa rataan dan distribusi banyaknya ronde permainan yang dimainkan pemain selama 14 hari pertama setelah instalasi pada gate_30 dan gate_40 diduga hampir sama.
+
+### Modeling
+
+#### A/B Testing
+
+Sejauh ini, ada 2 tipe A/B Testing yang sering digunakan.
+1. Tradisional Statistika : menggunakan uji hipotesis signifikansi rataan
+2. Bayesian A/B Testing : menggunakan prinsip bayesian
+
+Dalam artikel ini, akan digunakan 2 metode itu untuk analisis
+
+#### Traditional Statistics
+
+Dalam model ini, digunakan kolom sum_gamerounds pada data.
+
+```{python}
+A = df[df['version'] == "gate_30"]['sum_gamerounds']
+B = df[df['version'] == "gate_40"]['sum_gamerounds']
+```
+
+##### Uji Normalitas
+
+Sebelum menentukan jenis metode yang digunakan dalam A/B Testing secara tradisional, akan dilakukan uji normalitas. Uji ini digunakan untuk memeriksa jenis distribusi dari data. Dalam hal ini dilakukan uji Saphiro-Wilk dengan hipotesis nol adalah data berdistribusi normal sedanglkan hipotesis alternatifnya adalah data tidak berdistribusi normal.
+
+```{python}
+#Cek Asumsi
+from scipy.stats import shapiro
+import scipy.stats as stats
+shapiro(A)
+shapiro(B)
+```
+
+Didapatkan nilai pvalue sangat kecil dan kurang dari 0.05 (batas signifikansi yang ditentukan). Maka hipotesis nol ditolak. Artinya, data tidak berdistribusi normal.
+
+Karena data tidak berdistribusi normal, kemudia untuk menghindari asumsi distribusi, digunakan uji non-parameterik 'Mann Whitney-U'
+
+##### Uji Hipotesis
+
+Dalam Mann Whitney-U, hipotesis nolnya adalah 2 populasi sama dan hipotesis alternatifnya adalah dua populasi tidak sama.
+
+```{python}
+_, pvalue = stats.mannwhitneyu(A, B)
+pvalue
+```
+
+Didapatkan p-value kurang dari 0.05. Artinya, hipotesis nol ditolak. Dua populasi tersebut tidak sama. Namun sampai sejauh ini, kita belum dapat menentukan mana populasi yang lebih baik.
+
+#### Bayesian A/B Testing
+
+Bayesian A/B Testing menggunakan metode inferensi bayesian yang memberikan peluang seberapa baik/buruk grup A dari pada grup B. Dalam model ini digunakan kolom retention_1 pada data. 
+
+```{python}
+import pymc3 as pm
+```
+
+```{python}
+N_A = 44700
+N_B = 45489
+
+observations_A = df[df['version'] == 'gate_30']['retention_1'].values.astype(int)
+observations_B = df[df['version'] == 'gate_40']['retention_1'].values.astype(int)
+
+print('Banyaknya user yang kembali setelah 1 hari di grup A:', observations_A.sum())
+print('Banyaknya user yang kembali setelah 1 hari di grup B:', observations_B.sum())
+```
+
+```{python}
+#Bayesian 
+
+true_p_A = 0.448188
+true_p_B = 0.442283
+with pm.Model() as model:
+    p_A = pm.Beta("p_A", 11, 14)
+    p_B = pm.Beta("p_B", 11, 14)
+    delta = pm.Deterministic("delta", p_A - p_B)
+    obs_A = pm.Bernoulli("obs_A", p_A, observed=observations_A)
+    obs_B = pm.Bernoulli("obs_B", p_B, observed=observations_B)
+    step = pm.Metropolis()
+    trace = pm.sample(200, step=step) 
+    burned_trace=trace[10:]
+```
+
+```{python}
+p_A_samples = burned_trace["p_A"]
+p_B_samples = burned_trace["p_B"]
+delta_samples = burned_trace["delta"]
+```
+
+```{python}
+
+
+plt.figure(figsize=(12.5, 10))
+from IPython.core.pylabtools import figsize
+figsize(12.5, 10)
+
+
+
+ax = plt.subplot(311)
+
+plt.hist(p_A_samples, histtype='stepfilled', bins=25, alpha=0.85,
+         label="posterior of $p_A$", color="#A60628", density=True)
+plt.vlines(true_p_A, 0, 80, linestyle="--", label="true $p_A$ (unknown)")
+plt.legend(loc="upper right")
+plt.title("Posterior distributions of $p_A$, $p_B$, and delta unknowns")
+
+ax = plt.subplot(312)
+
+plt.hist(p_B_samples, histtype='stepfilled', bins=25, alpha=0.85,
+         label="posterior of $p_B$", color="#467821", density=True)
+plt.vlines(true_p_B, 0, 80, linestyle="--", label="true $p_B$ (unknown)")
+plt.legend(loc="upper right")
+
+ax = plt.subplot(313)
+plt.hist(delta_samples, histtype='stepfilled', bins=30, alpha=0.85,
+         label="posterior of delta", color="#7A68A6", density=True)
+plt.vlines(true_p_A - true_p_B, 0, 60, linestyle="--",
+           label="true delta (unknown)")
+plt.vlines(0, 0, 60, color="black", alpha=0.2)
+plt.legend(loc="upper right")
+plt.show()
+
+```
+
+```{python}
+import numpy as np
+
+print("Peluang grup A lebih buruk dari grup B: %.3f" % \
+    np.mean(delta_samples < 0))
+
+print("Peluang grup A lebih baik dari grup B: %.3f" % \
+    np.mean(delta_samples > 0))
+```
+
+### Conclusion
+
+Setelah melakukan A/B Testing dengan tradisional stastitik (Mann Whitney-U), didapatkan bahwa gate_30 dan gate_40 adalah dua populasi yang tidak sama. Setelah menggunakan A/B Testing dengan Bayesian, didapatkan bahwa gate_30 lebih baik dari gate_40. Artinya, perusahaan tidak perlu memindahkan gate ke level 40 dan tetap meletakkan gate di level 30.
+

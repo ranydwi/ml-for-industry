@@ -1,0 +1,3470 @@
+--- 
+title: "Machine Learning Application in Industry"
+author: "Algoritma Team"
+date: "`r format(Sys.Date(), '%d, %B %Y')`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+description: This is guide for Product Team Algoritma.
+---
+
+# Introduction
+
+Bookdown berikut ini disusun oleh Tim **Algoritma** yang bertujuan untuk memberikan beberapa contoh *use case* penerapan Machine Learning dalam beberapa industry.
+
+**Algoritma** adalah Data Science Academy yang berlokasi di Jakarta. Algoritma menyediakan beberapa workshop dan training program untuk membantu student ataupun profesional dalam penguasaan berbagai sub-bidang ilmu data meliputi : Data Visualization, Machine Learning, Data Modelling, Statistical Inference, dan lain-lain.
+
+
+```{r include=FALSE}
+# automatically create a bib database for R packages
+knitr::write_bib(c(
+  .packages(), 'bookdown', 'knitr', 'rmarkdown'
+), 'packages.bib')
+```
+
+<!--chapter:end:index.Rmd-->
+
+# Telecommunication
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>",
+  echo = TRUE
+)
+
+# scientific notation
+options(scipen = 9999)
+library(bookdown)
+```
+
+```{r message=F, warning=F, echo=FALSE}
+library(tidyverse)
+library(rsample)
+library(MLmetrics)
+library(inspectdf)
+library(caret)
+```
+
+
+## Customer Churn Prediction
+
+### Background
+
+Customer Churn didefinisikan sebagai kecenderungan pelanggan untuk berhenti melakukan interaksi dengan sebuah perusahaan. Perusahaan telekomunikasi memiliki kebutuhan untuk mengetahui customer yang akan berhenti berlangganan atau tidak, karena biaya mempertahankan pelanggan yang sudah ada jauh lebih sedikit dibandingkan memperoleh pelanggan baru. Perusahaan biasanya mendefinisikan 2 tipe customer churn, yaitu `voluntary churn` dan `involuntary churn`. `Voluntary churn` merupakan pelanggan yang sengaja berhenti dan beralih ke perusahaan lain, sedangkan `involuntary churn` merupakan pelanggan yang berhenti karena perpindahan lokasi, kematian, atau alasan lain yang sulit dikontrol. Analisis `voluntary churn` tentunya tidak sulit untuk mempelajari karakteristik pelanggan yang dapat dilihat dari data profil pelanggan. Permasalah diatas dapat dijawab dengan membuat model prediksi customer churn. Harapannya dengan adanya model prediksi customer churn, dapat mempermudah pihak perusahaan telekomunikasi untuk memperoleh informasi mengenai pelanggan yang berpeluang besar untuk churn.
+
+
+
+### Modelling Analysis
+
+#### Import Data
+
+Data yang digunakan merupakan data profil pelanggan perusahaan telekomunikasi yang diperoleh dar [link berikut.](https://www.kaggle.com/blastchar/telco-customer-churn) Data tersebut berisikan 7043 observasi dengan 21 kolom. Target variabel pada data ini adalah `Churn`, kita akan memprediksi apakah pelanggan akan berhenti berlangganan produk atau akan tetep berlangganan.
+
+```{r}
+customer <- read.csv("assets/01-telco/WA_Fn-UseC_-Telco-Customer-Churn.csv")
+head(customer)
+```
+
+Berikut ini merupakan deskripsi untuk setiap variabel:
+
+* `CustomerID`: Customer ID
+* `Gender`: Gender pelanggan yaitu Female dan Male
+* `SeniorCitizen`: Apakah pelanggan merupakan senio citizen (0: No, 1: Yes)
+* `Partner`: Apakah pelanggan memiliki partner atau tidak (Yes, No)
+* `Dependents`: Apakah pelanggan memiliki tanggungan atau tidak (Yes, No)
+* `Tenure`: Jumlah bulan dalam menggunakan produk perusahaan
+* `MultipleLines`: Apakah pelanggan memiliki banyak saluran atau tidak (Yes, No, No phone service)
+* `OnlineSecurity`: Apakah pelanggan memiliki keamanan online atau tidak 
+* `OnlineBackup`: Apakah pelanggan memiliki cadangan online atau tidak
+* `DeviceProtection`: Apakah pelanggan memiliki perlindungan perangkat atau tidak
+* `TechSupport`: Apakah pelanggan memiliki dukungan teknis atau tidak
+* `StreamingTV`: Apakah pelanggan berlangganan TV streaming atau tidak
+* `StreamingMovies`: Apakah pelanggan berlangganan movies streaming atau tidak
+* `Contract`: Ketentuan kontrak berlangganan (Month-to-month, One year, Two year)
+* `PaperlessBilling`: Apakah pelanggan memiliki tagihan tanpa kertas atau tidak (Yes, No)
+* `PaymentMethod`: Metode pembayaran (Electronic check, Mailed check, Bank transfer (automatic), Credit card (automatic))
+* `MonthlyCharges`: Jumlah pembayaran yang dilakukan setiap bulan
+* `TotalCharges`: Jumlah total yang dibebankan oleh pelanggan
+* `Churn`: Apakah pelanggan Churn atau tidak (Yes or No)
+
+#### Exploratory Data
+
+Sebelum eksplorasi lebih lanjut, perlu diketahui kelengkapan data yang dimiliki:
+```{r}
+colSums(is.na(customer))
+```
+
+Dari 7043 observasi ternyata terdapat `missing values` sebanyak 11 observasi pada kolom `TotalCharges`. Karena jumlah `missing values` cukup sedikit kita dapat membuat observasi tersebut. Selain itu, perlu kita buang variabel yang tidak dibutuhkan pada pemodelan yaitu `customerID` dan juga sesuaikan tipe data yang seharusnya.
+```{r}
+customer <- customer %>% 
+            select(-customerID) %>% 
+            na.omit() %>% 
+            mutate(SeniorCitizen = as.factor(SeniorCitizen)) 
+```
+
+Untuk mengetahui proporsi kelas pada setiap variable kategori, kita dapat menggunakan function `inspect_cat` dari package `inspectdf` seperti berikut:
+```{r}
+customer %>% inspect_cat() %>% show_plot()
+```
+
+Dari hasil plot diatas dapat diketahui proporsi kelas untuk target variabel cenderung lebih banyak dikategori `No` namun masih seimbang. Sedangkan untuk variabel lainnya untuk proporsi setiap level nya mayoritas seimbang.
+
+Berikutnya kita dapat eksplorasi persebaran untuk variabel data numerik dengan function `inspect_num` dari package `inspectdf` seperti berikut:
+```{r}
+customer %>% inspect_num() %>% show_plot()
+```
+
+Dari ketiga variabel numerik yang dimiliki, persebaran data cukup beragam untuk setiap nilai.
+
+#### Modelling
+
+Sebelum masuk ke tahap modelling, kita perlu membagi data menjadi `data_train` dan `data_test` dengan proporsi 80:20.
+```{r}
+set.seed(100)
+idx <- initial_split(data = customer,prop = 0.8,strata = Churn)
+data_train <- training(idx)
+data_test <- testing(idx)
+```
+
+Berikutnya bentuk model random forest menggunakan package `caret`, tentukan banyaknya cross validation dan repetition pada model dan juga target variabel dan prediktor yang digunakan.
+```{r}
+set.seed(100)
+ctrl <- trainControl(method="repeatedcv", number=5, repeats=3)
+# model_forest <- train(Churn ~ ., data=data_train, method="rf", trControl = ctrl)
+```
+
+import model yang sudah dijalankan pada chunk sebelumnya menggunakan `readRDS`.
+```{r}
+#saveRDS(model_forest,"assets/01-telco/model_forest.rds")
+model_forest <- readRDS("assets/01-telco/model_forest.rds")
+```
+
+```{r}
+model_forest
+```
+
+Dari hasil yang diperoleh pada `model_forest`, didapatkan accuraci sebesar 0.78 dengan mtry sebanyak 2. Selanjutnya, akan dilakukan tuning model dengan melakukan upsample data. Artinya, kita akan membuat proporsi dari target variabel sama besar.
+```{r}
+up_train <- upSample(x = data_train[,-20],
+                     y = data_train$Churn,
+                     yname = "Churn")
+```
+
+Dilakukan pembuat model random forest dengan data upsample:
+```{r}
+set.seed(100)
+# ctrl <- trainControl(method="repeatedcv", number=5, repeats=3)
+# forest_upc <- train(Churn ~ ., data=up_train, method="rf", trControl = ctrl)
+```
+
+```{r}
+#saveRDS(forest_upc,"assets/01-telco/model_caret.rds")
+forest_upc <- readRDS("assets/01-telco/model_caret.rds")
+```
+
+Dari hasil model kedua diperoleh hasil sebagai berikut:
+```{r}
+forest_upc
+```
+
+Setelah dilakukan upsample data, terlihat nilai accuracy yang diperoleh lebih besar dibandingkan model sebelumnya sebesar 0.89 dengan mtry sebanyak 16. Selanjutnya, akan dilakukan prediksi terhadap `data_test`:
+
+```{r}
+pred <- predict(forest_upc,newdata = data_test,type = "prob")
+pred$result <- as.factor(ifelse(pred$Yes > 0.45, "Yes","No"))
+confusionMatrix(pred$result, as.factor(data_test$Churn),positive = "Yes")
+```
+
+Pada kasus ini kita ingin memperoleh nila sensitivity/recall yang lebih besar, dengan menggunakan threshold sebesar 0.4 diperoleh nilai recall sebesar 0.70 dengan accuracy sebesar 0.79 dan precision sebesar 0.59. Dari model yang telah terbentuk kita dapat memperoleh nilai AUC pada model:
+```{r}
+library(ROCR)
+pred_prob <- predict(object = forest_upc,newdata = data_test,type = "prob")
+pred <-  prediction(pred_prob[,2],labels = data_test$Churn)
+perf <- performance(prediction.obj = pred,measure = "tpr",x.measure = "fpr")
+plot(perf)
+
+```
+
+```{r}
+auc <- performance(pred,measure = "auc")
+auc@y.values[[1]]
+```
+
+### Conclusion
+
+
+```{r}
+library(lime)
+test_x <- data_test %>% 
+  dplyr::select(-Churn)
+
+explainer <- lime(test_x, forest_upc)
+explanation <- lime::explain(test_x[1:2,],
+                             explainer, 
+                             labels = c("Yes"),
+                             n_features = 8)
+
+plot_features(explanation)
+```
+
+Setelah adanya model prediksi customer churn, pihak perusahaan telekomunikasi dapat dengan mudah mengetahui pelanggan yang memiliki kecendurungan akan churn. Kedua plot diatas memperlihatkan prediksi dua customer, kedua customer memiliki peluang besar untuk churn dan kita dapat mengetahui variabel mana yang `supports` dan `contradicts` terhadap hasil prediksi.
+
+<!--chapter:end:01-telco.Rmd-->
+
+# Finance
+
+```{r message=F, warning=F, echo=FALSE}
+library(tidyverse)
+library(rsample)
+library(tidymodels)
+library(caret)
+library(lime)
+library(xgboost)
+library(ROCR)
+library(inspectdf)
+```
+## Credit Risk Analysis 
+
+### Background
+
+Credit scoring merupakan sistem yang digunakan oleh bank atau lembaga keuangan lain untuk menentukan apakah seorang nasabah layak atau tidak mendapatkan pinjaman. Credit scoring membutuhkan berbagai data profil calon peminjam sehingga tingkat resiko dapat dihitung dengan tepat. Semakin tepat dan lengkap data yang disediakan, maka semakin akurat perhitungan yang dilakukan. 
+
+Proses tersebut tentunya merupakan hal yang baik, namun di sisi calon peminjam proses yang harus dilalui dirasa sangat merepotkan dan membutuhkan waktu untuk menunggu dan seiring tingginya tingkat kompetisi yang ada di industri finansial, menjadikan nasabah memiliki banyak alternatif. Semakin cepat proses yang ditawarkan, semakin tinggi kesempatan untuk mendapatkan peminjam.
+
+Tantangan pun muncul, bagaimana mendapatkan peminjam dengan proses yang efisien namun akurasi dari credit scoring tetap tinggi. Disinilah machine learning dapat membantu menganalisa data-data profil peminjam dan proses pembayaran sehingga dapat mengetahui profil peminjam yang memiliki peluang besar untuk melunasi pinjaman dengan lancar.
+
+Harapannya setelah mempunyai model machine learning dengan perfomance model yang baik, pegawai bank dapat dengan mudah mengidentifikasi karakteristik customer yang memiliki peluang besar untuk melunasi pinjaman dengan lancar. Dengan adanya model machine learning ini tentunya akan mengurangi biaya dan waktu yang lebih cepat.
+
+### Modelling Analysis
+
+#### Cleaning data
+```{r warning = F}
+credit <- read_csv("assets/02-finance/credit_record.csv")
+application <- read_csv("assets/02-finance/application_record.csv")
+```
+
+Data Description:
+
+**Credit**
+
+- ID : Client number	
+- MONTHS_BALANCE : Record month	The month of the extracted data is the starting point, backwards, 0 is the current month, -1 is the previous month, and so on
+- STATUS : Status	
+    - 0: 1-29 days past due 
+    - 1: 30-59 days past due 
+    - 2: 60-89 days overdue 
+    - 3: 90-119 days overdue 
+    - 4: 120-149 days overdue 
+    - 5: Overdue or bad debts, write-offs for more than 150 days 
+    - C: paid off that month 
+    - X: No loan for the month
+
+**Application**
+
+- ID	: Client number	
+- CODE_GENDER : Gender	
+- FLAG_OWN_CAR : Is there a car	
+- FLAG_OWN_REALTY ; Is there a property	
+- CNT_CHILDREN : Number of children	
+- AMT_INCOME_TOTAL : Annual income	
+- NAME_INCOME_TYPE	: Income category	
+- NAME_EDUCATION_TYPE :	Education level	
+- NAME_FAMILY_STATUS	: Marital status	
+- NAME_HOUSING_TYPE	: Way of living	
+- DAYS_BIRTH	: Birthday	Count backwards from current day (0), -1 means yesterday
+- DAYS_EMPLOYED	: Start date of employment	Count backwards from current day(0). If positive, it means - - the person currently unemployed.
+- FLAG_MOBIL	: Is there a mobile phone	
+- FLAG_WORK_PHONE	: Is there a work phone	
+- FLAG_PHONE	: Is there a phone	
+- FLAG_EMAIL	: Is there an email	
+- OCCUPATION_TYPE	: Occupation	
+- CNT_FAM_MEMBERS	:Family size
+
+**Check missing values**
+
+Pada data credit tidak terdapat missing value
+```{r}
+colSums(is.na(credit))
+```
+
+```{r}
+colSums(is.na(application))
+```
+
+Pada data application terdapat variabel `OCCUPATION_TYPE` yang memiliki banyak data missing, kita dapat membuang variabel tersebut. Serta kita akan membuang variabel `DAYS_BIRTH` dan `DAYS_EMPLOYED` yang tidak dibutuhkan pada model.
+ 
+```{r}
+application <- application %>% 
+               select(-c(OCCUPATION_TYPE, DAYS_BIRTH, DAYS_EMPLOYED))
+```
+
+**Menyesuaikan tipe data**
+
+Tahap berikutnya adalah menggabunkan data credit dan application serta menyesuaikan tipe data kategorik yang masih terbaca sebagai character.
+```{r}
+data_clean <- credit %>% 
+              left_join(application) %>% 
+              na.omit() %>% 
+              select(-ID) %>% 
+              filter(STATUS != "X") %>% 
+              mutate(STATUS = as.factor(ifelse(STATUS == "C", "good credit", "bad credit"))) %>% 
+              mutate_at(.vars = c("FLAG_MOBIL", "FLAG_WORK_PHONE",
+                                  "FLAG_PHONE", "FLAG_EMAIL"), as.factor) %>% 
+              mutate_if(is.character, as.factor) %>% 
+              data.frame()
+str(data_clean)
+```
+```{r, echo=FALSE}
+data_clean <- data_clean %>% head(100000)
+```
+
+
+#### Exploratory Data Analysis (EDA)
+
+Pada data EDA kita ingin mengetahui bagaimana sebaran data kategorik maupun numerik. 
+```{r}
+data_clean %>% inspect_cat() %>% show_plot()
+```
+Pada visualisasi berikut kita akan mendapatkan informasi apakah terdapat variabel yang tidak memiliki banyak informasi pada data, contohnya adalah variabel `FLAG_MOBIL` dimana keseluruhan data berisikan 1, artinya semua nasabah kita yang melakukan pinjaman memiliki mobil. Data yang tidak memiliki variansi seperti ini tidak diikutsertakan pada model.
+```{r}
+data_clean <- data_clean %>% 
+              select(-c(FLAG_MOBIL,FLAG_EMAIL))
+```
+
+```{r}
+data_clean %>% inspect_num() %>% show_plot()
+```
+
+#### Modelling Random Forest
+
+Split data train dan data test dengan proporsi 80:20. Data train akan digunakan untuk modelling, sedangkan data test akan digunakan untuk evaluasi.
+```{r}
+set.seed(100)
+index <- initial_split(data = data_clean, prop = 0.8, strata = "STATUS")
+train <- training(index)
+test <- testing(index)
+```
+
+Cek proporsi dari target variabel
+```{r}
+prop.table(table(train$STATUS))
+```
+
+Bentuk model random forest dengan 3 k-fold dan 2 repetition
+```{r}
+# set.seed(100)
+# 
+# ctrl <- trainControl(method = "repeatedcv",
+#                      number = 3, 
+#                      repeats = 2,
+#                      allowParallel=FALSE)
+# 
+# model_forest <- caret::train(STATUS ~.,
+#                              data = train, 
+#                              method = "rf", 
+#                              trControl = ctrl)
+
+#saveRDS(model_forest, "model_forest.RDS")
+
+model_forest <- readRDS("assets/02-finance/model_forest.RDS")
+```
+
+```{r}
+model_forest
+```
+
+Setelah dilakukan 3 repetition pada model, repetition kedua memiliki accuracy paling tinggi dengan jumlah mtry sebanyak 14. 
+
+Selanjutnya akan dilakukan prediksi untuk data test dan mencari nilai confusion matrix pada hasil prediksi.
+```{r}
+pred_rf<- predict(model_forest, newdata = test, type = "prob") %>% 
+          mutate(result = as.factor(ifelse(`bad credit` > 0.45, "bad credit", "good credit")),
+                 actual = ifelse(test$STATUS == 'good credit', 0, 1))
+confmat_rf <- confusionMatrix(pred_rf$result, 
+                                 test$STATUS,
+                                 mode = "prec_recall",
+                                 positive = "bad credit")
+
+eval_rf <- tidy(confmat_rf) %>% 
+  mutate(model = "Random Forest") %>% 
+  select(model, term, estimate) %>% 
+  filter(term %in% c("accuracy", "precision", "recall", "specificity"))
+
+eval_rf
+```
+
+
+#### Modelling XGBoost
+
+Tahap selanjutnya kita akan implementasikan data menggunakan model XGBoost, kita perlu menyiapkan data untuk model XGBoost terlebih dahulu
+
+```{r}
+data_xgb <- data_clean %>% 
+            mutate(STATUS = ifelse(STATUS == "good credit", 0, 1)) %>% 
+            data.frame()
+```
+
+
+```{r}
+set.seed(100)
+index <- initial_split(data = data_xgb, prop = 0.8, strata = "STATUS")
+train_xgb <- training(index)
+test_xgb <- testing(index)
+```
+
+```{r}
+label_train <- as.numeric(train_xgb$STATUS)
+label_test <- as.numeric(test_xgb$STATUS)
+```
+
+```{r}
+train_matrix <- data.matrix(train_xgb[,-2])
+test_matrix <- data.matrix(test_xgb[,-2])
+# convert data to Dmatrix
+dtrain <- xgb.DMatrix(data = train_matrix, label = label_train)
+dtest <- xgb.DMatrix(data = test_matrix, label = label_test)
+```
+
+```{r}
+params <- list(booster = "gbtree",
+               objective = "binary:logistic",
+               eta=0.7, 
+               gamma=10, 
+               max_depth=10, 
+               min_child_weight=3, 
+               subsample=1, 
+               colsample_bytree=0.5)
+```
+
+
+```{r}
+xgbcv <- xgb.cv( params = params, 
+                 data = dtrain,
+                 nrounds = 1000, 
+                 showsd = T, 
+                 nfold = 10,
+                 stratified = T, 
+                 print_every_n = 50, 
+                 early_stopping_rounds = 20, 
+                 maximize = F)
+print(xgbcv)
+```
+
+```{r}
+xgb1 <- xgb.train (params = params, 
+                   data = dtrain, 
+                   nrounds = xgbcv$best_iteration, 
+                   watchlist = list(val=dtest,train=dtrain),
+                   print_every_n = 100, 
+                   early_stoping_rounds = 10, 
+                   maximize = F , 
+                   eval_metric = "error",
+                   verbosity = 0)
+
+xgbpred_prob <-predict(object = xgb1, newdata = dtest)
+xgbpred <- ifelse (xgbpred_prob > 0.45,1,0)
+
+```
+
+```{r}
+confmat_xgb <- confusionMatrix(as.factor(xgbpred), as.factor(label_test), positive = "1")
+confmat_xgb
+```
+```{r}
+confmat_rf <- confusionMatrix(pred_rf$result, 
+                                 test$STATUS,
+                                 mode = "prec_recall",
+                                 positive = "bad credit")
+
+eval_rf <- tidy(confmat_rf) %>% 
+  mutate(model = "Random Forest") %>% 
+  select(model, term, estimate) %>% 
+  filter(term %in% c("accuracy", "precision", "recall", "specificity"))
+
+confmat_xgb <- confusionMatrix(as.factor(xgbpred), as.factor(label_test), positive = "1")
+
+eval_xgb <- tidy(confmat_xgb) %>% 
+  mutate(model = "XGBoost") %>% 
+  select(model, term, estimate) %>% 
+  filter(term %in% c("accuracy", "precision", "recall", "specificity"))
+
+```
+
+Setelah diperoleh perfomance model XGBoost kita akan membandingkan dengan perfomance model random forest.
+```{r}
+eval_result <- rbind(eval_rf, eval_xgb)
+eval_result
+```
+Metrics evaluasi yang kita utamakan adalah recall karena kita ingin meminimalisir mungkin keadaan dimana data actual nasabah tersebut *bad credit* namun terprediksi sebagai *good credit*. Dari hasil evaluasi dapat diketahui model XGBoost memiliki nilai recall lebih tinggi dibandingkan model random forest. 
+
+```{r}
+var_imp <- xgb.importance(model = xgb1,
+                          feature_names = dimnames(dtrain)[[2]])
+xgb.ggplot.importance(var_imp,top_n = 10) + 
+  theme_minimal()+
+  theme(legend.position = "none")
+```
+Grafik di atas menampilkan informasi mengenai 10 variabel yang paling berpengaruh pada model. Annual income dan months balance merupakan dua variabel terpenting pada model ini.
+
+```{r}
+xgb_result <- data.frame(class1 = xgbpred_prob, actual = as.factor(label_test))
+
+auc_xgb <- roc_auc(data = xgb_result, truth = actual,class1) 
+value_roc_xgb <- prediction(predictions = xgbpred_prob,
+                        labels = label_test)
+
+# ROC curve
+plot(performance(value_roc_xgb, "tpr", "fpr"))
+
+```
+
+```{r}
+value_auc_xgb <- performance(value_roc_xgb, measure = "auc")
+value_auc_xgb@y.values
+```
+Nilai AUC yang diperoleh pada model model ini sebesar 0.83 artinya model dapat memprediksi dengan baik kedua target class yaitu `good credit` dan `bad credit`. Harapannya model ini dapat digunakan oleh pihak bank untuk menentukan credit scoring dengan mengisikan data profil nasabah, kemudian hasil yang diperoleh dapat di visualisasikan sebagai berikut:
+
+```{r}
+explainer <- lime(train_matrix %>% as.data.frame(), xgb1)
+explanation <- explain(test_matrix[11:12,] %>% as.data.frame(),
+                             explainer, 
+                             labels = "1",
+                             n_features = 3,
+                             n_permutations = 5000,
+                             dist_fun = "manhattan",
+                             kernel_width = 0.75,
+                             feature_select = "highest_weights")
+
+plot_features(explanation)
+
+```
+
+Hasil dari visualisasi tersebut untuk nasabah 1 dan 2 memiliki probability 0.22 dan 0.17 artinya kedua nasabah tersebut akan dikategorikan sebagai `good credit`. Kedua nasabah tersebut memiliki karakteristik yang mirip karena hasil prediksi mereka didukung oleh kepemilikan model dan juga total income.
+
+
+## Evaluating Customer Financial Complaints
+
+### Background
+
+Penanganan complain customer pada perusahaan saat ini menjadi salah satu kunci utama suatu perusahaan dapat terus tumbuh dan berkembang, karena apabila nasabah merasa tidak mendapatkan layanan yang baik saat menyampaikan keluhan maka nasabah akan mudah berpindah ke perusahaan lain yang dianggap bisa memberikan layanan terhadap komplain dengan baik. Nasabah yang merasa tidak mendapatkan layanan baik biasanya akan mengajukan keluhan ke Consumer Financial Protection Bureau (CFPB), CFPB merupakan instansi yang bertanggung jawab atas perlindungan konsumen di sektor keuangan. CFPB menyediakan data yang berisi keluhan dari customer financial, data keluhan tersebut dapat dianalisa untuk dijadikan pertimbangan pihak perusahaan untuk mengetahui indikator yang memerlukan perbaikan demi meningkatkan kualitas layanan.
+
+### Exploratory Data Analysis
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(textclean)
+library(tidytext)
+library(wordcloud2)
+library(SnowballC)
+library(sentimentr)
+library(reshape2)
+library(widyr)
+library(igraph)
+library(ggraph)
+```
+
+```{r, eval=FALSE}
+customer <- read_csv("assets/02-finance/data_complaint.csv")%>% 
+              mutate_if(is.character, as.factor) %>% 
+              data.frame()
+```
+
+
+Data diperoleh dari [Consumer Financial Protection Bureau (CFPB)](https://www.consumerfinance.gov/)  yang mengatur penawaran dan penyediaan produk atau layanan nasabah keuangan. CFPB menyediakan pertanyaan-pertanyaan umum dan dapat membantu nasabah terhubung dengan perusahaan keuangan yang terlibat. Data tersebut berisikan keluhan nasabah dari berbagai bank di Amerika Serikat.
+
+```{r, eval=FALSE}
+top_company <- customer %>% 
+  na.omit(Consumer.complaint.narrative) %>% 
+  group_by(Company) %>% 
+  summarise(total = n()) %>% 
+  arrange(desc(total)) %>% 
+  head(1)
+```
+
+Dari 4504 perusahaan pada data, perusahaan yang paling banyak memiliki complain adalah `Transunion Intermediate Holdings`. Perlu diketahui bahwa banyaknya complain yang diperhitungkan tidak mempertimbangkan volume perusahaan. Misalnya, perusahaan dengan lebih banyak customer tentunya memiliki kemungkinan banyak complain dibandingkan perusahaan yang lebih sedikit pelanggannya dan juga pada analisa ini kita hanya memperhitungkan complain yang dilengkapi dengan narasi dari customer tersebut.
+
+Berikutnya kita akan fokus untuk menganalisa complai dari perusahaan `Transunion Intermediate Holdings` yang memiliki paling banyak narasi complain dari data.
+
+```{r, eval=FALSE, echo = FALSE}
+data_complaint <- customer %>%
+  na.omit(Consumer.complaint.narrative) %>% 
+  filter(Company %in% top_company$Company) %>%
+  droplevels()
+```
+
+```{r, echo = FALSE}
+#write.csv(data_complaint,"assets/02-finance/data_complaint.csv", row.names = F)
+data_complaint <- read.csv("assets/02-finance/data_complaint.csv")
+```
+
+Setelah memperoleh data observasi, selanjutnya membersihkan data text:
+```{r}
+data_clean <- data_complaint %>% 
+  select(Consumer.complaint.narrative) %>% 
+  mutate(Consumer.complaint.narrative = Consumer.complaint.narrative %>% 
+  tolower() %>% 
+  str_trim() %>% 
+  str_remove_all(pattern = "[[:punct:]]") %>% 
+  str_remove_all(pattern = "[0-9]") %>% 
+  str_remove_all(pattern = "xxxx") %>% 
+  replace_contraction() %>% 
+  replace_word_elongation() %>% 
+  replace_white() %>% 
+  str_squish())
+head(data_clean)
+```
+
+Setelah membersihkan data text, selanjutnya kita akan melakukan proses `tokenization` yaitu memecah 1 kalimat menjadi beberapa `term`, pada proses berikut ini juga diperoleh frekuensi dari setiap term yang muncul.
+```{r}
+text.dat <- data_clean %>% 
+  rowid_to_column("id") %>% 
+  unnest_tokens(word, Consumer.complaint.narrative) %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = T) %>% 
+  rename(words = word,
+         freq = n) %>% 
+  filter(words != is.na(words),
+         freq > 50)
+head(text.dat)
+```
+
+Kata yang sudah diperoleh akan divisualisasikan dengan wordcloud. Semakin sering suatu kata digunakan, maka semakin besar pula ukuran kata tersebut ditampilkan dalam wordcloud. Artinya kita dapat mengetahui kata yang paling sering digunakan oleh customer `Transunion Intermediate Holdings`. Kata `credit`, `report`, dan `account` merupakan kata yang paling sering digunakan oleh customer saat complain.
+```{r}
+wordcloud2(data = text.dat, size = 1, color = 'random-dark', shuffle = 1)
+```
+
+### Comparing Sentiment Dictionaries
+
+Semakin banyak informasi yang ditampilkan, dapat membantu pihak marketing mengembangkan strategi yang efektif dalam meningkatkan pelayanan, berikutnya tidak hanya kata yang sering muncul yang akan ditampilkan, namun juga informasi mengenai kata tersebut merupakan kata positif atau negatif yang digunakan oleh customer saat mengajukan complain.
+
+```{r}
+text_dat <-  data_clean %>% 
+  rowid_to_column("id") %>% 
+  unnest_tokens(word, Consumer.complaint.narrative) %>% 
+  anti_join(stop_words) %>% 
+  mutate(word = wordStem(word)) %>% 
+  count(word, sort = T) %>% 
+  filter(word != is.na(word))
+head(text_dat,20)
+```
+
+```{r}
+bing_word <- text_dat %>% 
+  inner_join(get_sentiments("bing")) 
+head(bing_word)
+```
+
+```{r}
+library(reshape2)
+library(wordcloud)
+bing_word %>% 
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
+  comparison.cloud(colors = c("gray70","gray20"), max.words = 200)
+```
+
+Sentiment Analysis yang dilakukan sebelumnya kita memperhitungan kemunculan kata positif dan negatif. Salah satu kelemahan pada pendekatan tersebut terkadang dapat disalah artikan penggunaannya pada sebuah kata, misal `correct` dan `support` akan dianggap sebagai kata positif. Namun, arti kata tersebut akan berubah jika terdapat kata `not` didepannya. Pada analisis berikut ini kita akan menggunakan n-gram untuk melihat seberapa sering `word1` diikuti oleh `word2`. Tokenisasi menggunakan n-gram berguna untuk eksplorasi kata yang memiliki hubungan. Ketika kita mengatur `n = 2` artinya kita akan menampilkan dua kata berturut-turut atau sering disebut dengam bigrams. Hasil dari visualisasi berikut ini menampilkan kata-kata yang berhubungan dengan kata `not`.
+
+```{r}
+dat_bigrams <- data_clean %>% 
+  unnest_tokens(bigram, Consumer.complaint.narrative, token = "ngrams", n= 2) %>%
+  separate(bigram, c("word1","word2"), sep = " ") %>% filter(word1 == "not") %>% 
+  inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>% 
+  count(word1,word2, value, sort = T) %>% 
+  mutate(contribution = n*value) %>% 
+  arrange(desc(abs(contribution))) %>% 
+  group_by(word1) %>% 
+  dplyr::slice(seq_len(20)) %>% 
+  arrange(word1, desc(contribution)) %>% 
+  ungroup() 
+```
+
+```{r}
+graph_bigram <- dat_bigrams %>% 
+                graph_from_data_frame()
+
+set.seed(123)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(graph_bigram, layout = "fr") +
+  geom_edge_link(alpha = .25) +
+  geom_edge_density(aes(fill = value)) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name),  repel = TRUE) +
+  theme_void() + theme(legend.position = "none",
+                       plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Negation Bigram Network")
+
+```
+
+
+### Correlation Pairs
+
+Analisis berikutnya, akan dilakukan eksplorasi untuk mengetahui kata-kata yang memiliki kecenderungan muncul bersama pada complain nasabah dengan mencari nilai korelasi antar kata.
+
+```{r}
+data_clean_cor <- data_complaint %>% 
+  select(Consumer.complaint.narrative,Issue,Product) %>% 
+  mutate(Consumer.complaint.narrative = Consumer.complaint.narrative %>% 
+  tolower() %>% 
+  str_trim() %>% 
+  str_remove_all(pattern = "[[:punct:]]") %>% 
+  str_remove_all(pattern = "[0-9]") %>% 
+  str_remove_all(pattern = "xxxx") %>% 
+  replace_contraction() %>% 
+  replace_word_elongation() %>% 
+  replace_white() %>% 
+  str_squish())
+head(data_clean_cor)
+```
+
+```{r}
+text_dat_cor <-  data_clean_cor %>% 
+                rowid_to_column("id") %>% 
+                unnest_tokens(word,Consumer.complaint.narrative) %>% 
+                anti_join(stop_words)
+```
+
+
+Untuk memperoleh korelasi antar kata dapat menggunakan function `pairwise_cor()` dari package `widyr`
+```{r}
+words_cors <- text_dat_cor %>% 
+  group_by(word) %>% 
+  filter(n() > 100) %>%
+  pairwise_cor(word, Issue, sort = T) 
+
+```
+
+Korelasi antar kata dapat kita tampilkan secar visual menggunakan package `ggraph`. Pada visualisasi berikut kita hanya ingin menampilkan kata yang memiliki korelasi lebih dari 0.9. Artinya korelasi pada visualisasi berikut memiliki kecenderungan muncul bersamaan saat nasabah mengajukan complain.
+```{r}
+set.seed(100)
+
+words_cors %>%
+  filter(correlation > .9) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation)) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void() +
+  ggtitle("Correlation between Words")+
+  theme(legend.position = "none",
+                       plot.title = element_text(hjust = 0.5,face = "bold"))
+```
+
+Manfaat dari Sentiment Analysis yang telah dilakukan adalah kita dapat mengetahui pesan utama dari pendapat dan pemikiran customer terhadap suatu company atau product. Selain itu, output dari sentiment analysis dapat memberikan gambaran mengenai pelayanan atau product yang belum sesuai. Hal tersebut dapat membantu tim marketing untuk meneliti trend yang dibutuhkan customer dengan lebih baik. Seiring dengan peningkatan kualitas layanan dan pengembangan produk yang lebih baik, tentunya akan mengurangi tingkat churn customer.
+
+
+## Behaviour Scoring Using Scorecard Prediction
+
+
+
+<!--chapter:end:02-finance.Rmd-->
+
+# Retail
+
+```{r message=F, warning=F, echo=FALSE}
+library(tidyverse)
+library(textclean)
+library(tidytext)
+library(SnowballC)
+library(reshape2)
+library(rsample)
+library(tm)
+library(e1071)
+library(lime)
+library(caret)
+```
+
+##  E-Commerce Clothing Reviews
+
+### Background
+
+Perkembangan teknologi membuat pergeseran perilaku customer dari pembelian offline menjadi pembelian online atau melalui e-commerce. 
+Perbedaan utama saat berbelanja secara online atau offline adalah
+saat akan berbelanja secara online, calon customer tidak dapat memeriksa barang yang akan dibeli secara langsung dan biasanya dibantuk oleh gambar atau deskripsi yang diberikan oleh penjual.
+Tentunya customer akan mencari informasi mengenai produk yang akan dibeli untuk meminimalisir dampak negatif yang didapat. Untuk membantu customer dalam menentukan product yang akan dibeli, mayoritas e-commerce sekarang ini menyediakan fitur online customer review, dimana online customer review ini dijadikan sebagai salah satu media customer mendapatkan informasi tentang produk dari customer yang telah membeli produk tersebut. Meningkatnya e-commerce di Indonesia, kebutuhan analisa mengenai online customer review dirasa perlu dilakukan untuk mendukung agar customer dapat memiliki pengalaman belanja online yang lebih baik daripada belanja offline. Salah satu implementasi data review customer tersebut dapat dimanfaatkan untuk membuat model yang dapat memprediksi apakah product tersebut direkomendasikan atau tidak direkomendasikan. Harapannya setelah perusahaan dapat menilai product mana yang direkomendasikan dan yang tidak direkomendasikan, dapat membantu perusahaan dalam pertimbangan penentuan top seller. Untuk seller yang memiliki banyak product yang direkomendasikan, dapat dijadikan sebagai top seller.
+
+
+```{r}
+reviews <- read.csv("assets/03-retail/Womens Clothing E-Commerce Reviews.csv")
+head(reviews)
+```
+
+Data yang digunakan merupakan data [women e-commerce clothing reviews](https://www.kaggle.com/nicapotato/womens-ecommerce-clothing-reviews). Terdapat dua variabel yang menjadi fokus analisis ini yaitu `Review.Text` dan `Recommended.IND`. Variabel `Review.Text` merupakan review yang diberikan oleh customer terhadap product dari berbagai e-commerce, sedangkan `Recommended.IND` merupakan penilaian rekomendasi dari customer, `1` artinya product tersebut `recommended` dan `0` artinya product tersebut `not recommended`.
+
+Sebelum masuk cleaning data, kita ingin mengetahui proporsi dari target variabel:
+```{r}
+prop.table(table(reviews$Recommended.IND))
+```
+
+### Cleaning Data
+
+Untuk mengolah data text, kita perlu mengubah data teks dari vector menjadi corpus dengan function `Vcorpus()`.
+
+```{r}
+reviews_corpus <- VCorpus(VectorSource(reviews$Review.Text))
+reviews_corpus
+```
+
+Selanjutnya, kita melakukan text cleansing dengan beberapa langkah sebagai berikut:
+
+- `tolower` digunakan untuk mengubah semua karakter menjadi lowercase.
+- `removePunctuation` digunakan untuk menghilangkan semua tanda baca.
+- `removeNumbers` digunakan untuk menghilangkan semua angka.
+- `stopwords` digunakan untuk menghilangkan kata-kata umum (am,and,or,if).
+- `stripWhitespace` digunakan untuk menghapus karakter spasi yang berlebihan.
+
+```{r}
+data_clean <- reviews_corpus %>% 
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removePunctuation) %>% 
+  tm_map(removeNumbers) %>% 
+  tm_map(removeWords, stopwords("en")) %>% 
+  tm_map(content_transformer(stripWhitespace)) 
+inspect(data_clean[[1]])
+```
+
+Setelah melakukan text cleansing, text tersebut akan diubah menjadi Document Term Matrix(DTM) melalui proses tokenization. Tokenization berfungsi memecah 1 teks atau kalimat menjadi beberapa term. Terim bisa berupa 1 kata, 2 kata, dan seterusnya. Pada format DTM, 1 kata akan menjadi 1 feature, secara default nilainya adalah jumlah kata pada dokumen tersebut. 
+```{r}
+dtm_text <- DocumentTermMatrix(data_clean)
+```
+
+Sebelum membentuk model, tentunya kita perlu split data menjadi data train dan data test dengan proporsi 80:20.
+```{r}
+set.seed(100)
+idx <- sample(nrow(dtm_text), nrow(dtm_text)*0.8)
+train <- dtm_text[idx,]
+test <- dtm_text[-idx,]
+train_label <- reviews[idx,"Recommended.IND"]
+test_label <-  reviews[-idx,"Recommended.IND"]
+```
+
+Term yang digunakan pada model ini, kita hanya mengambil term yang muncul paling sedikit 100 kali dari seluruh observasi dengan `findFreqTerms()`.
+```{r}
+freq <- findFreqTerms(dtm_text, 100)
+train_r <- train[, freq]
+test_r <- test[, freq]
+
+inspect(train_r)
+```
+
+Nilai dari setiap matrix masih berupa angka numerik, dengan range 0-inf. Naive bayes akan memiliki performa lebih bagus ketika variabel numerik diubah menjadi kategorik. Salah satu caranya dengan Bernoulli Converter, yaitu jika jumlah kata yang muncul lebih dari 1, maka kita akan anggap nilainya adalah 1, jika 0 artinya tidak ada kata tersebut.
+```{r}
+bernoulli_conv <- function(x){
+  x <- as.factor(ifelse(x > 0, 1, 0))
+  return(x)
+}
+
+train.bern <- apply(train_r, MARGIN = 2, FUN = bernoulli_conv)
+test.bern <- apply(test_r, MARGIN = 2, FUN = bernoulli_conv)
+```
+
+### Modelling
+
+Selanjutnya, pembentukan model menggunakan naive bayes dan diikuti dengan prediksi data test.
+```{r}
+model.nb <- naiveBayes(x = train.bern, 
+                       y = as.factor(train_label), 
+                       laplace = 1)
+pred.nb <- predict(object = model.nb, newdata= test.bern)
+```
+
+Dai hasil prediksi data test, kita akan menampilkan Confusion Matrix untuk mengetahui performa model.
+```{r}
+confusionMatrix(data = as.factor(pred.nb),
+                reference = as.factor(test_label),
+                positive = "1")
+```
+
+### Visualize Data Text
+
+Selanjutnya, kita akan coba lakukan prediksi terhadap data test dan juga menampilkan visualisasi text tersebut menggunakan package lime.
+
+```{r}
+set.seed(100)
+idx <- sample(nrow(reviews), nrow(reviews)*0.8)
+train_lime <- reviews[idx,]
+test_lime <- reviews[-idx,]
+```
+
+```{r}
+tokenize_text <- function(text){
+  
+  #create corpus
+  
+  data_corpus <- VCorpus(VectorSource(text))
+  
+  # cleansing
+  data_clean <- data_corpus %>% 
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removePunctuation) %>% 
+  tm_map(removeNumbers) %>% 
+  tm_map(removeWords, stopwords("en")) %>% 
+  tm_map(content_transformer(stripWhitespace)) 
+  
+  #dtm
+  dtm_text <- DocumentTermMatrix(data_clean)
+
+  #convert to bernoulli
+  data_text <- apply(dtm_text, MARGIN = 2, FUN = bernoulli_conv)
+  
+  return(data_text)
+}
+```
+
+
+```{r}
+model_type.naiveBayes <- function(x){
+  return("classification")
+}
+
+predict_model.naiveBayes <- function(x, newdata, type = "raw") {
+
+    # return classification probabilities only   
+    res <- predict(x, newdata, type = "raw") %>% as.data.frame()
+    
+    return(res)
+}
+
+text_train <- train_lime$Review.Text %>% 
+              as.character()
+
+```
+
+```{r}
+explainer <- lime(text_train,
+                  model = model.nb,
+                  preprocess = tokenize_text)
+```
+
+```{r}
+text_test <- test_lime$Review.Text %>% 
+            as.character()
+
+set.seed(100)
+explanation <- explain(text_test[5:10],
+                       explainer = explainer,
+                       n_labels =1,
+                       n_features = 50,
+                       single_explanation = F)
+
+```
+
+```{r}
+plot_text_explanations(explanation)
+```
+
+Dari hasil output observasi kedua terprediksi product tersebut recommended dengan probability 96.31% dan nilai explainer fit menunjukkan seberapa baik LIME dalam menginterpretasikan prediksi untuk observasi ini sebesar 0.89 artinya dapat dikatakan cukup akurat. Teks berlabel biru menunjukkan kata tersebut meningkatkan kemungkinan product tersebut untuk direkomendasikan, sedangkan teks berlabel merah berarti bahwa kata tersebut bertentangan/mengurangi kemungkinan product tersebut untuk direkomendasikan.
+
+##  Customer Segmentation with RFM Analysis (in Python Programming Language)
+
+
+```{r echo=FALSE}
+library(reticulate)
+reticulate::use_python(python = '/Users/ariqleesta/opt/anaconda3/envs/ariq/bin/python', required = T)
+sys <- import("sys")
+py_run_string("import os")
+py_run_string("os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = '/Users/ariqleesta/opt/anaconda3/plugins/platforms'")
+```
+
+
+
+### Background
+
+Dalam transaksi jual beli, customer memiliki peran penting dalam eksistensi dan kemajuan sebuah industri. Oleh karenanya berbagai strategi marketing dilakukan untuk menarik perhatian customer baru atau untuk mempertahankan loyalitas customer. 
+Cara yang paling umum dilakukan adalah pemberian diskon pada product tertentu atau pemberian free product untuk customer tertentu. Strategi marketing ini diterapkan sesuai dengan value yang dimiliki oleh customer. Beberapa value dapat dikategorikan menjadi `low-value customer` (customer dengan frekuensi transaksi rendah dan *spend money* rendah), `medium-value customer` (customer dengan frekuensi transaksi tinggi namun *spend money* rendah atau sebaliknya), dan `high-value customer` (customer dengan frekuensi transaksi tinggi dan *spend money* yang tinggi pula).
+
+Dalam melakukan segmentasi customer ada beberapa faktor yang harus dipertimbangkan. Faktor tersebut umumnya dianalisis berdasarkan data historical transaksi yang dimiliki oleh customer. Dari data historical tersebut dilakukan analisis lebih lanjut untuk mengetahui pattern data dan kemudian dilakukan modelling dengan bantuan algoritma machine learning agar menghasilkan output yang dapat dipertanggungjawabkan. Rangkaian proses ini nantinya diharapkan dapat menjawab beberapa pertanyaan bisnis seperti : 
+`Siapakah customer yang berpotensi untuk *churn*`, `Siapakah loyal customer`, `Siapakah potential customer`, dan lain-lain.
+
+Metode segmentasi yang paling umum digunakan untuk melakukan segmentasi customer adalah RFM analysis. RFM akan melakukan segmentasi berdasarkan 3 poin penting yaitu :
+
+1. Recency : Waktu transaksi terakhir yang dilakukan customer
+2. Frequency : Banyak transaksi yang dilakukan oleh customer
+3. Monetary : Banyak uang yang dikeluarkan ketika melakukan transaksi
+
+Dalam artikel ini, akan dibahas lebih lanjut tentang proses segmentasi customer menggunakan metode RFM dengan bantuan machine learning clustering algorithm. Bahasa yang digunakan adalah bahasa pemrograman python.
+
+```{r out.width="70%", fig.align='center', echo=FALSE}
+knitr::include_graphics("assets/03-retail/RFM.png")
+```
+
+### Modelling Analysis
+
+Pada artikel ini data yang digunakan adalah data online retail di UK yang dapat ditemukan pada [link berikut](https://www.kaggle.com/carrie1/ecommerce-data). Data ini adalah data transaksi yang terjadi pada 01/12/2010 sampai 09/12/2011.
+
+#### Import Library and Read Data
+
+```{python}
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+```{python}
+ecom = pd.read_csv("assets/03-retail/data_ecom_uk.csv",encoding='latin1')
+```
+
+```{python}
+ecom.head(2)
+```
+
+```{python}
+ecom.shape
+```
+
+Dataframe ini mengandung 541909 observasi dengan jumlah kolom sebanyak 8 yang antara lain adalah :
+
+* InvoiceNo : Nomor invoice yang terdiri dari 6 digit angka unik. Ketika `InvoiceNo` diawali dengan character `C` maka mengindikasikan *cancellation transaction*.
+* StockCode : Kode product yang terdiri dari 5 digit angka unik.
+* Description : Deskripsi nama product.
+* Quantity : Jumlah product yang dibeli pada setiap transaksi.
+* InvoiceDate : Tanggal transaksi berlangsung.
+* UnitPrice : Harga satuan product.
+* CustomerID : ID Customer yang berisi 5 digit angka unik dan berbeda pada setiap customer.
+* Country : Nama negara.
+
+#### Get only transaction in UK
+
+Dikarenakan terdapat beberapa data yang tidak berada pada country United Kingdom (UK), maka perlu dilakukan filter data hanya untuk country daerah UK.
+
+```{python}
+ecom_uk = ecom[ecom['Country']=='United Kingdom']
+ecom_uk.shape
+```
+
+```{python}
+ecom_uk.head(2)
+```
+
+#### Handle Missing Values
+
+Missing value adalah masalah yang umum dihadapi ketika melakukan proses pengolahan data. Missing value terjadi ketika terdapat obeservasi kosong pada sebuah data. 
+
+Pada hasil di bawah ini dapat diketahui informasi bahwa beberapa variable pada data menggandung nilai missing, variable tersebut antara lain adalah `Description` dan `CustomerID`. `CustomerID` adalah variable penting dalam RFM analisis, dikarenakan `CustomerID` mengandung informasi unik ID member. Sedangkan `Description` mengandung informasi terkait deskripsi produk. Jika ditelaah lebih jauh, untuk menangani missing values pada kedua variable tersebut dapat dilakukan dengan cara *deletion*, dikarenakan proses imputasi pada kedua variable tersebut akan menghasilkan informasi yang tidak akurat.
+
+```{python}
+ecom_uk.isna().sum()
+```
+
+Berikut ini adalah proses penghapusan missing values pada data :
+
+```{python}
+ecom_uk.dropna(inplace=True)
+```
+
+#### Select Unique Transaction
+
+Duplicated values atau duplikasi data adalah nilai berulang pada satu atau lebih observasi. Untuk menangani data yang duplikat dapat dilakukan penghapusan dan hanya mempertahankan salah satu observasi.
+
+```{python}
+ecom_uk.drop_duplicates(subset=['InvoiceNo', 'CustomerID'], keep="first", inplace=True)
+```
+
+#### Change Data Types
+
+Dalam pengolahan data transformasi tipe data pada format yang sesuai sangat penting untuk dilakukan, hal ini agar nantinya data-data tersebut siap untuk dilakukan manipulasi lebih lanjut.
+
+```{python}
+ecom_uk.dtypes
+```
+
+```{python}
+ecom_uk['InvoiceDate'] = pd.to_datetime(ecom_uk['InvoiceDate'])
+ecom_uk['Country'] = ecom_uk['Country'].astype('category')
+ecom_uk['CustomerID'] = ecom_uk['CustomerID'].astype('int64')
+```
+
+#### Drop cancelled transaction
+
+Karakter pertama "C" pada `InvoiceNo` menunjukkan bahwa customer melakukan pembatalan terhadap transaksi yang dilakukan. Sehingga data akan kurang relevan jika tetap dipertahankan, maka dari itu perlu dilakukan penghapusan pada observasi tersebut.
+
+```{python}
+ecom_uk = ecom_uk.loc[~ecom_uk.iloc[:,0].str.contains(r'C')]
+```
+
+```{python}
+ecom_uk.head()
+```
+
+### Exploratory Data Analysis
+
+Tahapan Exploratory Data Analysis digunakan untuk mengetahui pattern dari data.
+
+#### Recency
+
+Recency adalah faktor yang menyimpan informasi tentang berapa lama sejak customer melakukan pembelian. Untuk melakukan perhitungan recency pada masing-masing customer dapat dilakukan dengan cara memanipulasi tanggal transaksi customer dan kemudian dikurangi dengan tanggal maksimum yang terdapat pada data. Berikut di bawah ini adalah detail langkah-langkahnya :
+
+a. Manipulasi tanggal transaksi dengan mengekstrak informasi tanggal, bulan dan tahun transaksi.
+
+```{python}
+ecom_uk['Date'] = ecom_uk['InvoiceDate'].dt.date
+```
+
+```{python}
+ecom_uk.head(2)
+```
+
+b. Mengambil tanggal transaksi maksimum pada keseluruhan observasi
+
+```{python}
+last_trans = ecom_uk['Date'].max()
+last_trans
+```
+
+c. Mengekstrak informasi tanggal transaksi maksimum pada tiap customer.
+
+```{python}
+recent = ecom_uk.groupby(by=['CustomerID'],  as_index=False)['Date'].max()
+```
+
+```{python}
+recent.columns = ['CustomerID','Last Transaction']
+recent.head()
+```
+
+d. Menghitung selisih tanggal transaksi maksimum dengan tanggal transaksi terakhir pada tiap customer, kemudian menyimpan jumlah hari pada kolom `Days Recent`.
+
+```{python}
+recent['Days Recent'] = last_trans - recent['Last Transaction']
+recent['Days Recent'] = recent['Days Recent'].dt.days
+```
+
+```{python}
+recent.head()
+```
+
+```{python}
+recent.drop(columns=['Last Transaction'], inplace=True)
+```
+
+#### Frequency
+
+Frequency mengandung infromasi tentang seberapa sering customer melakukan transaksi pembelian dalam kurun waktu tertentu. Nilai frequency dapat diperoleh dengan cara menghitung jumlah transkasi pada setiap unik customer.
+
+```{python}
+temp = ecom_uk[['CustomerID','InvoiceNo']]
+```
+
+```{python}
+trans_cust = temp.groupby(by=['CustomerID']).count()
+trans_cust.rename(columns={'InvoiceNo':'Number of Transaction'})
+trans_cust.reset_index()
+```
+
+Ouptut di atas menunjukkan jumlah transaksi yang dilakukan pada masing-masing customer. CustomerID 12346 melakukan transaksi sebanyak 1 kali saja, CustomerID 12747 melakukan transaksi sebanyak 11 kali, dan seterusnya.
+
+Berikut dibawah ini adalah detail informasi `InvoiceNo` pada setiap transaksi yang dilakukan oleh customer.
+
+```{python}
+table_trans_details = temp.groupby(by=['CustomerID','InvoiceNo']).count()
+```
+
+```{python}
+table_trans_details.head()
+```
+
+#### Monetary
+
+Monetary adalah faktor yang menyimpan jumlah pengeluaran customer dalam transaksi. Nilai monetary dapat dihitung dari harga barang yang dibeli oleh masing-masing customer pada transaksi tertentu dan kemudian dikalkulasikan dengan jumlah barang yang dibeli.
+
+```{python}
+ecom_uk['Total'] = ecom_uk['UnitPrice'] * ecom_uk['Quantity']
+ecom_uk.head(2)
+```
+
+```{python}
+monetary = ecom_uk.groupby(by=['CustomerID'], as_index=False)['Total'].sum()
+```
+
+```{python}
+monetary
+```
+
+#### Merge Column based on CustomerID
+
+Setelah mendapatkan informasi pada setiap faktor penting, langkah selanjutnya adalah menyimpannya kedalam sebuah dataframe baru.
+
+```{python}
+new_ = monetary.merge(trans_cust,on='CustomerID')
+new_data = new_.merge(recent,on='CustomerID')
+new_data.rename(columns={'Total':'Monetary','InvoiceNo':'Frequency','Days Recent':'Recency'}, inplace=True)
+new_data.head()
+```
+
+### Modelling
+
+#### Clustering Recency, Frequency, and Monetary
+
+Proses clustering bertujuan untuk membagi level customer kedalam beberapa segment tertentu meliputi `low-value customer`, `medium-value customer` or `high-value customer`.
+
+#### Recency
+
+Pada faktor Recency, customer yang memiliki *recent* trasaksi akan di kategorikan pada `high-value customer`. Kenapa? Karena customer tersebut berpotensi untuk melakukan pembelian lagi dibanding dengan customer yang sudah lama tidak melakukan pembelian. 
+
+```{python}
+new_data['Recency'].describe()
+```
+
+Teknik elbow mwthod untuk menentukan jumlah cluster yang terbentuk.
+
+```{python}
+from sklearn.cluster import KMeans
+
+
+sse={}
+recency = new_data[['Recency']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(recency)
+    recency["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Recency']])
+new_data['RecencyCluster'] = kmeans.predict(new_data[['Recency']])
+```
+
+```{python}
+new_data.groupby('RecencyCluster')['Recency'].describe()
+```
+
+Berdasarkan visualisasi grafik elbow, maka jumlah cluster ideal yang dapat dibentuk adalah sebanyak 3 cluster. Pada hasil di atas menunjukkan bahwa cluster 1 mengandung informasi customer yang melakukan transaksi paling baru (most recent) sedangkan cluster 0 mengandung informasi customer yang sudah lama tidak melakukan transaksi pembelian. 
+
+Untuk keperluan standarisasi, maka perlu dilakukan re-order cluster sehingga cluster 0 akan memuat informasi `low-value customer`, cluster 1 `medium-value customer` dan cluster 2 `high-value customer`.
+Dikarenakan step ini adalah step Recency, maka cluster yang memiliki nilai recency rendah akan dikategorikan pada cluster 2.
+
+Dibawah ini adalah fungsi untuk melakukan reorder cluster :
+
+```{python}
+#function for ordering cluster numbers
+def order_cluster(cluster_field_name, target_field_name,df,ascending):
+    new_cluster_field_name = 'new_' + cluster_field_name
+    df_new = df.groupby(cluster_field_name)[target_field_name].mean().reset_index()
+    df_new = df_new.sort_values(by=target_field_name,ascending=ascending).reset_index(drop=True)
+    df_new['index'] = df_new.index
+    df_final = pd.merge(df,df_new[[cluster_field_name,'index']], on=cluster_field_name)
+    df_final = df_final.drop([cluster_field_name],axis=1)
+    df_final = df_final.rename(columns={"index":cluster_field_name})
+    return df_final
+```
+
+```{python}
+new_data = order_cluster('RecencyCluster', 'Recency',new_data,False)
+```
+
+#### Frequency
+
+Factor penting selanjutnya adalah Frequency. Pada step frequency, customer yang memiliki banyak transaksi pembelian akan dikategorikan pada level `high-value customer`.
+
+```{python}
+new_data['Frequency'].describe()
+```
+
+```{python}
+sse={}
+frequency = new_data[['Frequency']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(frequency)
+    frequency["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Frequency']])
+new_data['FrequencyCluster'] = kmeans.predict(new_data[['Frequency']])
+new_data.groupby('FrequencyCluster')['Frequency'].describe()
+```
+
+Sama halnya dengan tahapan pada step Recency, pada step ini juga perlu dilakukan standarisasi cluster dengan melakukan reorder pada cluster. Sehingga cluster 0 dengan nilai frequency yang rendah akan dikategorikan pada level `low-value customer` sedangkan cluster 2 dengan nilai frequency tinggi akan dikategorikan pada level `high-values customer`.
+
+```{python}
+new_data = order_cluster('FrequencyCluster', 'Frequency',new_data,True)
+```
+
+#### Monetary
+
+Faktor penting terakhir pada RFM analysis adalah Monetary. Customer dengan nilai monetary yang tinggi akan dikategorikan pada level `high-value customer` dikarenakan berkontribusi besar dalam pendapatan yang dihasilkan industry.
+
+```{python}
+new_data['Monetary'].describe()
+```
+
+```{python}
+sse={}
+monetary_ = new_data[['Monetary']]
+for k in range(1, 10):
+    kmeans = KMeans(n_clusters=k, max_iter=1000).fit(monetary_)
+    monetary_["clusters"] = kmeans.labels_
+    sse[k] = kmeans.inertia_ 
+plt.figure()
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.xlabel("Number of cluster")
+plt.show()
+```
+
+```{python}
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(new_data[['Monetary']])
+new_data['MonetaryCluster'] = kmeans.predict(new_data[['Monetary']])
+new_data.groupby('MonetaryCluster')['Monetary'].describe()
+```
+
+Reorder cluster untuk standarisasi cluster sehingga cluster 0 dengan nilai monetary rendah akan dikategorikan dalam `low-value customer` sedangkan cluster 2 dengan nilai monetary tinggi akan dikelompokkan pada `high-values customer`.
+
+```{python}
+new_data = order_cluster('MonetaryCluster', 'Monetary',new_data,True)
+```
+
+#### Segmentation Customer based on Cluster
+
+Setelah memperoleh nilai cluster terurut pada setiap observasi data, langkah selanjutnya adalah memberikan label pada masing-masing observasi. Label ini bertujuan untuk mengidentifikasi level pada masing-masing customer apakah tergolong pada `low-value customer`, `medium-value customer` atau `high-value customer`.
+
+Proses pelabelan terdiri dari beberapa tahapan yang antara lain adalah :
+
+```{python}
+new_data.head()
+```
+
+a. Menghitung score pada masing-masing observasi dengan melakukan penjumlahan pada nilai cluster.  
+
+```{python}
+new_data['Score'] = new_data['RecencyCluster'] + new_data['FrequencyCluster'] + new_data['MonetaryCluster']
+new_data.head(2)
+```
+
+```{python}
+print(new_data['Score'].min())
+print(new_data['Score'].max())
+```
+
+Dari hasil di atas diperoleh informasi bahwa minimum score pada data adalah 0, sedangkan maksimum value pada data adalah 4. Sehingga untuk segmentasi label dapat dikategorikan berdasarkan ketentuan berikut :
+
+* Customer dengan score <= 1 akan masuk dalam kategori `low-value customer`
+* Customer dengan score <= 3 akan masuk dalam kategori `medium-value customer`
+* Customer dengan score > 3 akan masuk dalam kategori `high-value customer`
+
+```{python}
+label = []
+
+def label_(data) :
+    if data <= 1 :
+        lab = "Low"
+    elif data <= 3 :
+        lab = "Medium"
+    else :
+        lab = "High"
+    label.append(lab)
+```
+
+```{python}
+new_data['Score'].apply(label_)
+```
+
+```{python}
+new_data['Label'] = label
+```
+
+```{python}
+new_data.head(2)
+```
+
+### Customer's behavior in each factor based on their label
+
+Setelah memberikan label pada masing-masing customer, apakah sudah cukup membantu untuk tim management dalam menentukan strategi marketing yang tepat? Jawabannya dapat Ya atau Tidak. Tidak dikarenakan management perlu untuk mengetahui informasi detail dari behavior (kebiasaan) customer pada setiap level dalam melakukan pembelanjaan. Oleh karena itu, sebelum melangkah lebih jauh, terlebih dahulu lakukan behavior analisis sebagai berikut :
+
+```{python}
+import numpy as np
+
+def neg_to_zero(x):
+    if x <= 0:
+        return 1
+    else:
+        return x
+
+new_data['Recency'] = [neg_to_zero(x) for x in new_data.Recency]
+new_data['Monetary'] = [neg_to_zero(x) for x in new_data.Monetary]
+
+rfm_log = new_data[['Recency', 'Frequency', 'Monetary']].apply(np.log, axis = 1).round(3)
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler
+    
+scaler = StandardScaler()
+rfm_scaled = scaler.fit_transform(rfm_log)
+
+rfm_scaled = pd.DataFrame(rfm_scaled, index = new_data.index, columns = rfm_log.columns)
+```
+
+```{python}
+rfm_scaled.head()
+```
+
+```{python}
+rfm_scaled['Label'] = new_data.Label
+rfm_scaled['CustomerID'] = new_data.CustomerID
+```
+
+```{python}
+rfm_scaled
+```
+
+```{python}
+rfm_melted = pd.melt(frame= rfm_scaled, id_vars= ['CustomerID', 'Label'], \
+                     var_name = 'Metrics', value_name = 'Value')
+```
+
+```{python}
+rfm_melted
+```
+
+Visualisasi behavior customer pada setiap level.
+
+```{python}
+import seaborn as sns
+
+# a snake plot with RFM
+sns.lineplot(x = 'Metrics', y = 'Value', hue = 'Label', data = rfm_melted)
+plt.title('Customer Behavior based on their Label')
+plt.legend(loc = 'upper right')
+```
+
+Berdasarkan visualisasi di atas diperoleh detail informasi bahwa :
+
+1. Customer dengan `high-value` labels memiliki kecenderungan untuk menghabiskan banyak uang dalam berbelanja (high monetary) dan sering melakukan pembelanjaan (high frequency)
+2. Customer dengan `medium-value` labels tidak terlalu sering melakukan pembelian dan juga tidak banyak menghabiskan uang selama transaksi.
+3. Customer dengan `low-value` labels hanya menghabiskan sedikit uang selama berbelanja, tidak terlalu sering berbelanja, tetapi  memiliki nilai recency yang cukup tinggi dibandingkan level lainnya.
+
+Berdasarkan rules di atas, pihak management dapat mempertimbangkan melakukan strategi marketing dengan cara :
+
+1. Memberikan special promotion atau discount untuk `low-value` customer yang baru-baru saja berkunjung untuk berbelanja, sehingga mereka tertarik untuk berbelanja lagi di lain waktu.
+2. Mempertahankan `medium-value` customer dengan cara memberikan cashback pada pembeliannya.
+3. Memberikan reward pada loyal customer (`high-value`) dengan cara memberikan free product atau cashback pada pembelanjaannya.
+
+### Conclusion
+
+RFM analysis adalah teknik yang umum digunakan untuk melakukan segmentasi terhadap customer berdasarkan value dan behavior selama bertransaksi. Teknik ini sangat membantu pihak management khususnya marketing team dalam menentukan strategi bisnis yang cocok untuk mempertahankan loyal customer dan menarik customer baru.
+
+## Feature Recommendation on Mobile Games
+
+### Background
+
+Dalam suatu proses bisnis, pemberian fasilitas atau fitur produk yang sesuai dengan kebutuhan dan kenyamanan user atau customer adalah hal yang penting untuk diperhatikan. Salah satu cara untuk mengetahui minat user adalah dengan melakukan A/B Testing. Di A/B Testing, terdapat 2 grup A dan B yang diberikan perlakuan yang berbeda yang kemudian akan dibandingkan performansi dari masing-masing grup. 
+
+Pada artikel ini, digunakan data dari kaggle (https://www.kaggle.com/yufengsui/mobile-games-ab-testing) untuk melakukan proses A/B Testing. Data ini berisi tentang perilaku user pada Mobile Games yang berjudul Cookie Cats. Cookie Cats merupakan permainan populer yang dikembangkan oleh  Tactile Entertainment. 
+
+Pada saat pemain melalui level-level dalam game, mereka terkadang akan menemukan gate yang memaksa mereka untuk menunggu waktu tertentu atau melakukan pembelian dalam aplikasi untuk melanjutkan permainan. Selain mendorong pembelian dalam aplikasi, gate ini juga memiliki tujuan untuk memberikan pemain istirahat dari bermain game. Sehingga dapat meningkatkan dan memperpanjang kenyamanan pemain dalam bermain game.
+
+Nah, tetapi di manakah gate itu perlu ditempatkan? Pada awalnya, gate ditempatkan di level 30. Akan tetapi perusahaan akan mencoba untuk melakukan pemindahan gate tersebut di Cookie Cats dari level 30 ke level 40. Untuk melakukan eksperimen tersebut, perusahaan memutuskan melakukan A/B Testing dan melakukan analisis apakah pemindahan tersebut berpengaruh pada kenyamanan pemain atau tidak.
+
+### Data Preparation
+
+Sebelum melakukan pemodelan, perlu dilakukan persiapan data. Data yang dipersiapkan dipastikan telah memiliki kualitas yang baik agara model yang dibangun nantinya juga model yang baik.
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{python}
+df=pd.read_csv('assets/03-retail/cookie_cats.csv')
+```
+
+```{python}
+df.head()
+```
+
+Data ini diambil dari 90.189 pemain yang melakukan instalasi pada game pada saat A/B Testing dijalankan.
+
+Variabel-variabelnya adalah :
+1. userid - nomor unik yang mengidentifikasikan setiap pemain.
+2. version - kategori apakah pemain diletakkan di the control group (gate_30 - a gate at level 30) atau di grup dengan gate yang berpindah (gate_40 - a gate at level 40).
+3. sum_gamerounds - banyaknya ronde permainan yang dimainkan pemain selama 14 hari pertama setelah instalasi. 
+4. retention_1 - apakah pemain datang kembali dan main pada saat 1 hari setelah melakukan instalasi? 
+5. retention_7 - apakah pemain datang kembali dan main pada saat 7 hari setelah melakukan instalasi? 
+
+### Exploratory Data Analysis
+
+Mari melakukan eksplorasi pada data yang kita punya untuk lebih memahaminya!
+
+```{python}
+# EDA
+
+df.groupby("version")['sum_gamerounds'].agg(["min", "max", pd.Series.mode, "median", "mean", "std", "count"])
+```
+
+```{python}
+#memeriksa ilustrasi distribusi data
+
+def plot_distribution(dataframe):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    sns.histplot(dataframe, x="sum_gamerounds", label='histogram', multiple="dodge", hue="version",
+                 shrink=.8, binwidth=10, ax=axes[0])
+    sns.boxplot(x=dataframe['version'], y=dataframe['sum_gamerounds'], ax=axes[1])
+
+    axes[0].set_xlim(0, 200)
+    axes[1].set_yscale('log')
+    axes[0].set_title('Distribution histogram', fontsize=14)
+    axes[1].set_title('Distribution version', fontsize=14)
+    plt.show()
+```
+
+```{python}
+plot_distribution(df)
+```
+
+Dari summary dan visualisasi data, dapat dilihat bahwa rataan dan distribusi banyaknya ronde permainan yang dimainkan pemain selama 14 hari pertama setelah instalasi pada gate_30 dan gate_40 diduga hampir sama.
+
+### Modeling
+
+#### A/B Testing
+
+Sejauh ini, ada 2 tipe A/B Testing yang sering digunakan.
+1. Tradisional Statistika : menggunakan uji hipotesis signifikansi rataan
+2. Bayesian A/B Testing : menggunakan prinsip bayesian
+
+Dalam artikel ini, akan digunakan 2 metode itu untuk analisis
+
+#### Traditional Statistics
+
+Dalam model ini, digunakan kolom sum_gamerounds pada data.
+
+```{python}
+A = df[df['version'] == "gate_30"]['sum_gamerounds']
+B = df[df['version'] == "gate_40"]['sum_gamerounds']
+```
+
+##### Uji Normalitas
+
+Sebelum menentukan jenis metode yang digunakan dalam A/B Testing secara tradisional, akan dilakukan uji normalitas. Uji ini digunakan untuk memeriksa jenis distribusi dari data. Dalam hal ini dilakukan uji Saphiro-Wilk dengan hipotesis nol adalah data berdistribusi normal sedanglkan hipotesis alternatifnya adalah data tidak berdistribusi normal.
+
+```{python}
+#Cek Asumsi
+from scipy.stats import shapiro
+import scipy.stats as stats
+shapiro(A)
+shapiro(B)
+```
+
+Didapatkan nilai pvalue sangat kecil dan kurang dari 0.05 (batas signifikansi yang ditentukan). Maka hipotesis nol ditolak. Artinya, data tidak berdistribusi normal.
+
+Karena data tidak berdistribusi normal, kemudia untuk menghindari asumsi distribusi, digunakan uji non-parameterik 'Mann Whitney-U'
+
+##### Uji Hipotesis
+
+Dalam Mann Whitney-U, hipotesis nolnya adalah 2 populasi sama dan hipotesis alternatifnya adalah dua populasi tidak sama.
+
+```{python}
+_, pvalue = stats.mannwhitneyu(A, B)
+pvalue
+```
+
+Didapatkan p-value kurang dari 0.05. Artinya, hipotesis nol ditolak. Dua populasi tersebut tidak sama. Namun sampai sejauh ini, kita belum dapat menentukan mana populasi yang lebih baik.
+
+#### Bayesian A/B Testing
+
+Bayesian A/B Testing menggunakan metode inferensi bayesian yang memberikan peluang seberapa baik/buruk grup A dari pada grup B. Dalam model ini digunakan kolom retention_1 pada data. 
+
+```{python}
+import pymc3 as pm
+```
+
+```{python}
+N_A = 44700
+N_B = 45489
+
+observations_A = df[df['version'] == 'gate_30']['retention_1'].values.astype(int)
+observations_B = df[df['version'] == 'gate_40']['retention_1'].values.astype(int)
+
+print('Banyaknya user yang kembali setelah 1 hari di grup A:', observations_A.sum())
+print('Banyaknya user yang kembali setelah 1 hari di grup B:', observations_B.sum())
+```
+
+```{python}
+#Bayesian 
+
+true_p_A = 0.448188
+true_p_B = 0.442283
+with pm.Model() as model:
+    p_A = pm.Beta("p_A", 11, 14)
+    p_B = pm.Beta("p_B", 11, 14)
+    delta = pm.Deterministic("delta", p_A - p_B)
+    obs_A = pm.Bernoulli("obs_A", p_A, observed=observations_A)
+    obs_B = pm.Bernoulli("obs_B", p_B, observed=observations_B)
+    step = pm.Metropolis()
+    trace = pm.sample(200, step=step) 
+    burned_trace=trace[10:]
+```
+
+```{python}
+p_A_samples = burned_trace["p_A"]
+p_B_samples = burned_trace["p_B"]
+delta_samples = burned_trace["delta"]
+```
+
+```{python}
+
+
+plt.figure(figsize=(12.5, 10))
+from IPython.core.pylabtools import figsize
+figsize(12.5, 10)
+
+
+
+ax = plt.subplot(311)
+
+plt.hist(p_A_samples, histtype='stepfilled', bins=25, alpha=0.85,
+         label="posterior of $p_A$", color="#A60628", density=True)
+plt.vlines(true_p_A, 0, 80, linestyle="--", label="true $p_A$ (unknown)")
+plt.legend(loc="upper right")
+plt.title("Posterior distributions of $p_A$, $p_B$, and delta unknowns")
+
+ax = plt.subplot(312)
+
+plt.hist(p_B_samples, histtype='stepfilled', bins=25, alpha=0.85,
+         label="posterior of $p_B$", color="#467821", density=True)
+plt.vlines(true_p_B, 0, 80, linestyle="--", label="true $p_B$ (unknown)")
+plt.legend(loc="upper right")
+
+ax = plt.subplot(313)
+plt.hist(delta_samples, histtype='stepfilled', bins=30, alpha=0.85,
+         label="posterior of delta", color="#7A68A6", density=True)
+plt.vlines(true_p_A - true_p_B, 0, 60, linestyle="--",
+           label="true delta (unknown)")
+plt.vlines(0, 0, 60, color="black", alpha=0.2)
+plt.legend(loc="upper right")
+plt.show()
+
+```
+
+```{python}
+import numpy as np
+
+print("Peluang grup A lebih buruk dari grup B: %.3f" % \
+    np.mean(delta_samples < 0))
+
+print("Peluang grup A lebih baik dari grup B: %.3f" % \
+    np.mean(delta_samples > 0))
+```
+
+### Conclusion
+
+Setelah melakukan A/B Testing dengan tradisional stastitik (Mann Whitney-U), didapatkan bahwa gate_30 dan gate_40 adalah dua populasi yang tidak sama. Setelah menggunakan A/B Testing dengan Bayesian, didapatkan bahwa gate_30 lebih baik dari gate_40. Artinya, perusahaan tidak perlu memindahkan gate ke level 40 dan tetap meletakkan gate di level 30.
+
+
+<!--chapter:end:03-retail.Rmd-->
+
+# Insurance
+
+```{r message=F, warning=F, echo=FALSE}
+library(tidyverse)
+library(rsample)
+library(randomForest)
+library(randomForestExplainer)
+library(MLmetrics)
+library(inspectdf)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+## Prediction of Total Claim Amount
+
+### Background
+
+Seiring tingkat kompetisi yang semakin tinggi di industri asuransi, perusahaan dituntut untuk selalu memberikan terobosan dan strategi untuk memberikan layanan yang terbaik untuk nasabahnya. Salah satu aset utama perusahaan asuransi tentunya adalah data nasabah dan riwayat polis. Tentunya dengan adanya data yang dimiliki oleh perusahaan, dapat dimanfaatkan dalam upaya pengambilan keputusan strategis.
+
+Perusahaan memiliki kebutuhan untuk memperhitungkan pembayaran klaim di masa depan. Tanggung jawab tersebut biasa dikenal sebagai cadangan klaim. Karena cadangkan klaim adalah kewajiban yang harus dipersiapkan untuk masa yang akan datang, nilai pastinya tidak diketahui dan harus diperkirakan.
+
+Risiko yang dimiliki oleh setiap nasabah tentunya bervariasi, faktor-faktor yang berhubungan dengan risiko tentunya membantu dalam memprediksi biaya klaim yang harus dibayarkan. Tujuan dari analysis ini adalah untuk memprediksi besarnya klaim yang harus diberikan oleh perusahaan untuk setiap nasabahnya, hasil prediksi diperoleh dengan mempelajari karakteristik dan profil dari nasabah tersebut.
+
+### Modelling Analysis
+
+#### Import Data
+
+Data yang digunakan merupakan profil data nasabah asuransi kendaraan beserta total claim dari masing-masing nasabah yang diperoleh dari [link berikut.](https://github.com/ccpintoiu/Prediction-of-Claim-Amount-in-Vehicle-Insurance) Data tersebut berisikan 9134 observasi atau sebanyak jumlah nasabah yang dimiliki, beserta 26 kolom. Target variabel pada data ini adalah `Total.Claim.Amount`, kita akan memprediksi total claim amount untuk setiap nasabah, harapannya perusahaan asuransi dapat mengetahui dana yang harus disiapkan untuk membayar klaim.
+
+```{r}
+insurance <- read.csv("assets/04-insurance/Auto_Insurance_Claims_Sample.csv")  
+head(insurance)
+```
+
+#### Exploratory Data
+
+Selanjutnya melihat structure data dari masing-masing variabel, jika terdapat variabel yang belum sesuai tipe datanya perlu dilakukan `explicit coercion`.
+
+```{r}
+str(insurance)
+```
+
+Berikutnya kita perlu inspect persebaran data yang dimilih baik data kategorik dan numerik, kita dapat menggunakan package `inspectdf` untuk eksplorasi berikut ini.
+```{r}
+insurance %>% inspect_cat() %>% show_plot()
+```
+
+```{r}
+insurance %>% inspect_num() %>% show_plot()
+```
+
+Dari hasil kedua plot diatas berikutnya membuang variabel yang tidak dibutuhkan dalam model. Variabel `customer` merupakan data unique dari ID setiap customer, oleh karena itu kita akan membuang variabel tersebut. Variabel `country` tidak banyak memberikan informasi, karena semua observasi berisikan informasi yang sama. Variabel `State.Code` juga memberikan informasi yang sama dengan variabel `State`, oleh karena itu kita akan menggunakan salah satu dari kedua variabel tersebut yaitu variabel `State`. Sedangkan untuk variabel `Policy` kita hilangkan karena informasi yang diberikan juga sama dengan variabel `Policy.Type`.
+
+```{r}
+insurance <- insurance %>% 
+  select(-c(Customer, Country, State.Code,
+            Effective.To.Date, Policy))
+```
+
+
+Selanjutnya, split data menjadi data train dan data test dengan proporsi 80:20.
+
+```{r}
+set.seed(100)
+idx <- initial_split(data = insurance,prop = 0.8)
+claim_train <- training(idx)
+claim_test <- testing(idx)
+```
+
+#### Modelling
+
+Kemudian bentuk model random forest, tentukan target variabel dan prediktor yang digunakan.
+```{r, eval=FALSE}
+library(randomForest)
+forest_claim <- randomForest(Total.Claim.Amount~.,data = claim_train, localImp = TRUE)
+#saveRDS(forest_claim,"forest_claim.RDS")
+```
+
+```{r}
+forest_claim <- readRDS("assets/04-insurance/forest_claim.RDS")
+forest_claim
+```
+
+Model memiliki kemampuan menjelaskan variasi data sebesar 84.8%, sedangkan sisanya sebesar 15.2% dijelaskan oleh variabel lain yang tidak digunakan pada model. Untuk mengetahui variabel yang paling berpengaruh pada model, kita dapat melihat `variabel importance`. 
+```{r}
+varImpPlot(forest_claim, main = "Variable Importance",n.var = 5)
+```
+
+Nilai importance atau tingkat kepentingannya terdapat dua penilaian yaitu `IncMSE` dan `IncNodePurity`. Untuk `IncMSE` diperoleh dari error pada OOB (out of bag) data, kemudian di rata-ratakan untuk semua pohon, dan dinormalisasi dengan standar deviasi. Untuk `IncNodePurity` merupakan total penurunan impurity dari masing-masing variabel. Untuk kasus klasifikasi node impurity diperoleh dari nilai gini index, sedangkan untuk kasus regresi diperoleh dari SSE (Sum Square Error).
+
+Untuk mengetahui peran variabel dalam pembuatan model, kita dapat memanfaatkan package `randomForestExplainer` yang menyediakan beberapa function untuk memperoleh informasi mengenai variabel importance.
+```{r, eval=FALSE}
+mindepth_frame <- min_depth_distribution(forest_claim)
+#saveRDS(mindepth_frame, "mindepthframe.rds")
+```
+
+```{r}
+mindepth_frame <- readRDS("assets/04-insurance/mindepthframe.rds")
+plot_min_depth_distribution(mindepth_frame, mean_sample = "top_trees")
+```
+
+Plot tersebut memberikan informasi mengenai nilai `mean minimal dept` untuk setiap variabel. Semakin kecil nilai minimal depth artinya semakin penting variabel tersebut pada model. Semakin besar proporsi minimal dept pada warna merah mudah (mendekati 0), artinya variabel tersebut sering dijadikan sebagai root node, yaitu variabel utama yang digunakan untuk menentukan nilai target.
+
+```{r eval = FALSE}
+imp_frame <- measure_importance(forest_claim)
+#saveRDS(imp_frame,"imp_frame.rds")
+```
+
+```{r}
+imp_frame <- readRDS("assets/04-insurance/imp_frame.rds")
+plot_multi_way_importance(imp_frame, size_measure = "no_of_nodes",no_of_labels = 6)
+```
+
+```{r}
+plot_multi_way_importance(imp_frame, x_measure = "mse_increase",
+                          size_measure = "p_value", no_of_labels = 6)
+```
+
+Perbandingan dari ketiga plot, terdapat 5 variabel yaitu location code, monthly premium auto, vehicle class, income, dan claim amount yang selalu muncul dari ketiga plot tersebut. Artinya kelima variabel tersebut dapat dikatakan variabel yang paling berpengaruh dan banyak digunakan dalam pembuatan pohon.
+
+Berikutnya lakukan prediksi untuk data test, kemudian cari nilai error dari hasil prediksi
+```{r}
+claim_test$pred <- predict(object = forest_claim,newdata = claim_test)
+```
+
+Mencari nilai RMSE (Root Mean Squared Error)
+```{r}
+MLmetrics::RMSE(y_pred = claim_test$pred,y_true = claim_test$Total.Claim.Amount)
+```
+
+RMSE merupakan nilai rata rata dari jumlah kuadrat error yang menyatakan ukuran besarnya kesalahan yang dihasilkan oleh model. Nilai RMSE rendah menunjukkan bahwa variasi nilai yang dihasilkan oleh model mendekasi variasi nilai observasinya. Jika dilihat dari 5 number summary variabel total claim amount, nilai RMSE yang diperoleh sebesar 119.9 dapat dikatakan sudah cukup baik.
+
+### Conclusion
+
+Untuk memprediksi nilai `Total Claim Amount` model ini memiliki kemampuan menjelaskan variasi data sebesar 84.8% dan variabel yang paling mempengaruhi target adalah variabel location code, monthly premium auto, vehicle class, income, dan claim amount. Hasil error yang diperoleh dari model tersebut cukup baik dalam memprediksi data.
+
+<!--chapter:end:04-insurance.Rmd-->
+
+# Bioinformatics
+
+
+## QTL Mapping for Disease Resistance
+
+### Backgorund
+
+Ketahanan pangan merupakan salah satu prioritas utama dalam Rancangan Pembangunan Jangka Panjang Menengah Nasional. Ketersediaan pangan strategis sangat diandalkan dalam upaya mewujudkan ketahanan pangan. Pangan strategis dapat diartikan sebagai komoditas pangan yang terkait dengan kebutuhan sebagian besar masyarakat. Salah satu contoh komoditas pangan strategis menurut kementerian pertanian Indonesia adalah cabai. Sering kali petani cabai mengalami gagal panen dikarenakan serangan penyakit bakteri dan jamur pada akar dan daun. Salah satu penyakit yang dominan yang menyerang tanaman cabai adalah jamur *Phytophthora capsici*. 
+
+Perlu dilakukan sebuah penelitian untuk mengetahui letak gen yang mempengaruhi sifat rentan terhadap jamur *Phytophthora capsici*. Beberapa hasil penelitian telah membuktikan analisis *Quantitative Trait Locus* sukses mengidentifikasi sifat pada tanaman. Maka dari itu sebagai bahan kajian peningkatan kualitas tanaman cabai, menggunakan data sekuen DNA yang sudah tersedia, dengan pendekatan metode QTL akan diidentifikasi letak gen yang berhubungan secara signifikan terhadap penyakit *Phytophthora capsici*.
+
+### Modelling Analysis
+
+#### Import Data
+
+```{r}
+pacman::p_load("ASMap","qtlcharts","qtl", "ggplot2","ggpubr","ggdendro", "dendextend", "factoextra", "car", "igraph")
+```
+
+```{r message=FALSE}
+dataset <- read.cross(
+  format = "csv", 
+  dir = "assets/05-bioinformatics/",
+  file ="data.csv", 
+  sep = ";", 
+  genotypes = c("a","h","b"),
+  alleles = c("a","b")
+)
+```
+
+```{r}
+summary(dataset)
+```
+
+Diatas merupakan hasil ringkasan dari data. Populasi yang digunakan hasil persilangan tipe F2 *intercross* yang menghasilkan individu sebanyak 296 jenis. Data fenotipe menjelaskan tentang skoring ketahanan tanaman cabai terhadap *Phytophthora capsici*. Interval skornya diantara 0 sampai dengan 5. Tanaman cabai yang memiliki resisten terhadap *Phytophthora capsici* akan diberi skor 0, sedangkan yang rentan akan diberi skor 5. Sebanyak 100% data fenotipe berhasil terbaca, artinya tidak ada data yang hilang (NA). Pada data ini hanya menggunakan 1 kromosom yang diamati, yaitu kromosom ke-5 dari total 11 kromosom cabai.
+
+
+```{r}
+ggplot(data = dataset$pheno, mapping = aes(x = dataset$pheno$Score)) +
+  geom_density() +
+  labs(
+    title = "Distribusi sebaran skor fenotipe",
+    x = "Skor ketahanan *Phytophthora capsici*"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+shapiro.test(dataset$pheno$Score)
+```
+
+Berdasarkan kurva dan uji hipotesis, maka keputusannya data fenotipe tidak berdistribusi normal (distribusi bimodal). Menurut penelitian yang dilakukan [**Margawati (2015)**](https://repository.ipb.ac.id/handle/123456789/41318) ketika kurva fenotipe menunjukkan distribusi bimodal, maka itu merupakan indikasi terdapat gen mayor (yang signifikan mempengaruhi). 
+
+#### Exploratory Data Analysis
+
+```{r fig.height=8}
+cg <- comparegeno(dataset)
+
+#dendogram clastering
+dataclust <- abs(cg - 1)
+
+# Dissimilarity matrix
+df <- scale(dataclust)
+d <- dist(df, method = "euclidean")
+hc3 <- hclust(d, method = "ward.D2")
+
+#phylogenetic tree
+dend_plot <- fviz_dend(
+  hc3, k = 4, # Cut in four groups
+  cex = 0.5, # label size
+  k_colors = "jco"
+)
+```
+
+```{r}
+# extract the dendrogram data
+dend_data <- attr(dend_plot, "dendrogram")
+
+# Cut the dendrogram at height h = 10
+dend_cuts <- cut(dend_data, h = 90)
+
+
+# Plot subtree 3
+fviz_dend(
+  dend_cuts$lower[[3]], main = "Subtree 3",
+  lwd = 1.3, ggtheme = theme_bw(), horiz = TRUE
+)
+```
+
+
+Berdasarkan hasil clusternig di atas, dapat diketahui individu cabai dengan nomor 173, 185, 202, 247, 251, 291, 14, dan 216 berada pada satu cluster yang sama. Hal ini masuk akal, karena individu tersebut berasal dari tetua yang sama tipenya, sehingga karakteristiknya hampir sama. Jika antar individu tidak memiliki kemiripan genotipe, maka akan terpisah jauh atau berada pada branch yang berbeda.
+
+#### QTL Analysis
+
+Interval Mapping atau pemetaan interval menjadi pendekatan yang populer pada analisis QTL. Dalam interval mapping, masing-masing penanda sekuen akan dihitung nilai *Logarithm of the Odds* (LOD). Mudahnya, skor LOD adalah nilai statistik yang digunakan pada data genetika untuk mengukur apakah 2 gen atau lebih yang sedang diamati cenderung terletak berdekatan satu sama lain atau tidak. Skor LOD 3 atau lebih secara umum dapat dipahami bahwa 2 gen tersebut terletak berdekatan pada kromosom.
+
+```{r}
+
+# Marker regression
+
+dataset_rf <- est.rf(dataset, maxit = 200, tol = 1e-8)
+out.mr <- scanone(dataset_rf, method = "mr")
+
+# Harley-knott regression
+datalink_1 <- calc.genoprob(dataset_rf, step=1, error.prob=0.001, map.function = "haldane")
+
+out.hk <- scanone(datalink_1, method="hk")
+
+
+# Multiple Imputation
+
+set.seed(1997)
+datalink_2 <- sim.geno(dataset_rf, step=1, error.prob=0.001)
+out.imp <- scanone(datalink_2, method="imp")
+```
+
+
+
+```{r}
+par(mfrow=c(1,1))
+plot(out.imp, out.hk, out.mr, ylab="LOD Score",
+ lty = c(1,1,2), col = c("black", "blue", "red"),
+ main = "Perbandingan metode IMP, HK, EHK",
+ lwd = 2.5, ylim = c(0,10))
+legend("topleft", legend=c("Multiple Imputation",
+ "Harley-Knott Regression","Extented
+HK"),
+ col=c("black", "blue", "red"), lty=c(1,1,2), cex=0.7, lwd
+= 2,
+ title = "Metode")
+
+```
+
+
+Pemilihan motode terbaik berdasarkan skor *panelized LOD* yang tertinggi. Hasilnya, metode Imputation memperoleh LOD yang tertinggi yaitu 11.53. Selanjutnya, mencari formula regresi menggunakan metode imputation:
+
+```{r}
+dataqtl.step0 <- sim.geno(
+  cross = dataset_rf, step = 0, error.prob = 0.001,
+  map.function = "haldane", n.draws = 296
+)
+
+```
+
+```{r eval=FALSE}
+set.seed(1)
+outsw1 <- stepwiseqtl(dataqtl.step0, verbose = TRUE, method = "imp")
+outsw1
+```
+
+```{r}
+outsw1 <- readRDS(file = "assets/05-bioinformatics/outsw1.RDS")
+chr <- c(5,5,5)
+pos <- c(117.34, 159.31, 256.48)
+qtl <- makeqtl(dataqtl.step0, chr, pos)
+my.formula <- y ~ Q1 + Q2 + Q3 + Q1:Q2
+out.fitqtl <- fitqtl(dataqtl.step0, qtl=qtl, formula=my.formula,
+get.ests = F)
+summary(out.fitqtl)
+
+```
+
+Diperoleh formula skor ketahanan terhadap *phytophthora capsici* sebagai berikut:
+
+$$Formula: y \sim Q1 + Q2 + Q3 + Q1:Q2 $$
+
+Keterangan:
+
+* y = Skor fenotipe ketahanan terhadap penyakit *phytophthora capsici*
+* Qi = Marka QTL ke-i
+
+Jika hasil summary model diatas diringkas kedalam bentuk tabel, maka informasinya seperti berikut:
+
+```{r}
+tibble(
+  Variabel = c("Q1", "Q2", "Q3", "Q1:Q2"),
+  `Kode Marka` = c("PMMCB81", "PMMCB34", "MCA32", "PMMCB81 : PMMCB34"),
+  `% Var` = c(18.25, 13.36, 2.79, 12.62)
+)
+```
+
+Kolom pertama dan kedua menjelaskan tentang simbol model QTL beserta nama markanya. Kolom persentase variansi (%var) adalah estimasi dari variansi fenotipe yang dijelaskan oleh marka PMMCB81, PMMCB34, MCA32, dan interaksi marka PMMCB81:PMMCB34. Total %var sebesar 46,3%. Mempunyai makna bahwa kemampuan seluruh marka dalam model untuk menjelaskan skor variansi fenotipe ketahanan tanaman cabai terhadap bakteri *phytophthora capsici* adalah sebesar 46,3%, sedangkan sisanya dijelaskan oleh marka lain diluar penelitian.
+
+Visualisasi peta genetik dengan model QTL yang signifikan dan hasi skor LOD metode multiple imputation disajikan pada gambar dibawah ini.
+
+```{r}
+par(mfrow=c(1,2))
+plot(outsw1, col="red", justdots = F, show.marker.names = F)
+plot(out.imp$lod, out.imp$pos, col="red", xlab = "LOD",
+ ylim = c(315, 0),las = 1, ylab = "Map Position (cM)",
+ type = "l", lwd = 3,
+ main = "Interval Mapping")
+# abline(v=tresh[4], lty = "dotted", lwd=3, col="darkgrey")
+legend("bottomright", legend="Multiple Imputation",
+ col="red", lty=1, cex=0.7, lwd = 2,
+ title = "Metode", bty = "n")
+```
+
+
+### Conclusion
+
+Hasil model QTL yang terbentuk dengan ($\alpha$ = 5%) formulanya y ~ Q1 + Q2 + Q3 + Q1:Q2 yang secara urut merupakan penanda sekuen (marka) dengan kode PMMCB81, PMMCB34, MCA32, dan interaksi PMMCB81 x PMMCB34. Skor LOD masing-masing model sebesar 5,80 (PMMCB81), 2,74 (PMMCB34) dan 8,6 (MCA32). Model QTL tersebut mampu menjelaskan 46,3% variansi skor fenotipe ketahanan tanaman cabai terhadap jamur *phytophthora capsici*. Rekomendasi yang dapat diberikan, perlu dilakukan investigasi lebih lanjut pada ketiga marka tersebut untuk memperbaiki atau mengembangkan kultivar tanaman cabai yang resisten terhadap penyakit layu yang disebabkan oleh jamur *phytophthora capsici*.
+
+<!--chapter:end:05-bioinformatics.Rmd-->
+
+# Public Health
+
+## Survival Analysis of Patients with Lung Cancer
+
+Kanker paru merupakan kanker pada organ pernapasan yang menjadi kanker pembunuh nomer satu di dunia dan Indonesia (CNN Indonesia, 2018). Data internasional dari *Globocan* 2018 menyatakan kanker paru adalah kanker yang paling banyak ditemukan di pria dan wanita di seluruh dunia dibandingkan jenis kanker lainnya. Pasien penderita kanker paru memerlukan penanganan yang terarah. Oleh karena itu akan dilakukan pengamatan, faktor apa saja yang mempengaruhi waktu ketahanan hidup pasien kanker paru. Metode yang digunakan adalah *survival analysis*, yaitu analisis statistik untuk mengambil keputusan yang berkaitan dengan waktu sampai dengan terjadinya suatu kejadian khusus (*failure event/ end point*). 
+
+Pada bidang studi kanker, hal yang sering jadi perhatian peneliti adalah:
+
+* Berapa probabilitas individu/pasien untuk survive selama 3 tahun?
+* Apakah terdapat perbedaan kemampuan survive antara kelompok demografi pasien?
+
+
+### Import Data
+
+```{r}
+library(tidyverse)
+library(survival)
+library(SurvRegCensCov)
+library(survminer)
+
+options(scipen = 9999)
+```
+
+Data yang digunakan merupakan data dummy rekam medis dari pasien kanker paru-paru. Sebanyak 137 pasien diobservasi dimana 128 mengalami *event* meninggal dan sisanya tersensor (dirujuk ke rumah sakit lain). Durasi waktu pengamatan menggukan satuan hari. 
+
+```{r}
+lung <- read.csv("assets/06-health/data-paru.csv", sep = ";")
+
+glimpse(lung)
+```
+
+Berikut adalah penjelasan mengenai beberapa informasi yang diamati:
+
+1. `treatment`: 1 (*standard*), 2 (*test*)
+2. `cell type`: 1 (*large*), 2 (*adeno*), 3 (*small*), 4 (*squamoues*)
+3. `survival`: waktu pengamatan dalam hari
+4. `status`: 1 (*cencored* / berhasil survive), 0 (meninggal)
+
+Menurut Kementerian Kesehatan, kelompok usia yang paling berisiko tinggi mencakup pasien yang berusia > 40 tahun. Maka, pada data akan dikelompokkan menjadi dua kelompok usia.
+
+
+```{r}
+lung <- lung %>% 
+  rename(time = survival) %>% 
+  mutate(
+    treatment = factor(treatment, levels = c(1,2), labels = c("standard", "test")),
+    cell = factor(cell, levels = c(1,2,3,4), labels = c("large", "adeno","small","squamous")),
+    age = case_when(
+      age > 40 ~ ">40",
+      TRUE ~ "<=40"
+    )
+  )
+```
+
+
+### Exploratory Data Analysis
+
+Variabel prediktor (treatment, age, perform, cell) akan dianalisis menggunakan regresi survival. Dimana akan dilihat faktor-faktor apa saja yang mempengaruhi ketahanan hidup pasien sampai mengalami sebuah *event*: meninggal. Namun sebelumnya akan dianalisis menggunakan pendekatan non parametrik yaitu metode *Kaplan Meier* dan *Log-Rank*. *Kaplan Meier* adalah kurva yang menggambarkan hubungan antara waktu pengamatan (survival) dengan estimasi fungsi survival pada waktu ke-t. Kurva yang terbentuk kemudian dibandingkan menggunakan uji *Log Rank*. Tujuannya untuk mengetahui apakah terdapat perbedaan peluang survive antara level di setiap variabel kategorik.
+
+```{r}
+lung_surv <- survfit(Surv(time = time, event = status) ~ 1, data = lung)
+```
+
+```{r}
+tibble(
+  time = lung_surv$time,
+  n_risk = lung_surv$n.risk,
+  n_event = lung_surv$n.event,
+  survival = lung_surv$surv
+)
+```
+
+Baris pertama output menyatakan pada waktu pengamatan hari pertama, ada 137 pasien, 2 diantaranya meninggal pada saat itu. Peluang survive diperoleh menggunakan perhitungan $(137-2)/137 = 0.985$. Pada garis kedua yang menyatakan observasi di hari ke-2, terdapat 135 pasien, dimana satu orang diantaranya meninggal pada saat itu. Peluang survivalnya diperoleh dengan perhitungan $(135-1)/137 = 0.978$. Tabel informasi diatas jika divisualisasikan tampilannya akan seperti berikut:
+
+```{r}
+ggsurvplot(
+   lung_surv,
+   color = "#2E9FDF",
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves all variable")
+```
+
+Hasil di atas adalah kurva survival untuk kesuluruhan parameter. Sumbu vertikal merupakan peluang survival dan sumbu horizontal adalah waktu pengamatan. Berdasarkan grafik, terlihat jelas bahwa makin jauh waktu pengamatan, peluang survive akan semakin kecil. Masing-masing variabel juga dapat dicari fungsi survivalnya, untuk memperoleh insight apakah tiap kelompok variabel terdapat perbedaan peluang survive yang signifikan.
+
+```{r}
+km_cell <- survfit(Surv(time = time, event = status) ~ cell, data = lung)
+
+ggsurvplot(
+   km_cell,
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves for Cell Type Group")
+```
+
+
+Grafik diatas cukup menjelaskan bahwa keempat kelompok *cell type* memiliki perbedaan garis yang cukup signifikan. Maka, dapat diduga bahwa kelompok *cell type* pada data observasi memiliki perbedaan yang signifikan terhadap status survive pasien kanker paru. Akan dilakukan uji eksak, menggunakan *Log-Rank* untuk memperkuat identifikasi berdasarkan grafik.
+
+
+```{r}
+# log rank cell type
+
+lr_cell <- survdiff(Surv(time ,status)~ cell, data = lung)
+lr_cell
+```
+
+Tingkat signifikansi yang digunakan adalah sebesar 5% (0.05). Berdasarkan uji *Log-Rank*, diperoleh *p-value* (0.0001) < alpha (0.05) maka kesimpulannya terdapat perbedaan yang signifikan pada fungsi survival keempat kelompok *cell*.
+
+
+```{r}
+km_treatment <- survfit(Surv(time = time, event = status) ~ treatment, data = lung)
+
+ggsurvplot(
+   km_treatment,
+   ggtheme = ggthemes::theme_pander()) +
+  labs(title = "Kaplan-Meier Curves for Treatment group")
+```
+
+
+Pada hasil grafik di atas, antara pria dan wanita memiliki jarak yang berdekatan. Artinya tidak terdapat perbedaan yang signifikan untuk waktu survivalnya. Untuk memperkuat interpretasi berdasarkan grafik, perlu dilakukan uji hipotesis dengan menggunakan perhitungan eksak, yakni metode Log-Rank.
+
+```{r}
+# log rank treatment
+
+lr_treatment <- survdiff(Surv(time ,status)~ treatment, data = lung)
+lr_treatment
+```
+
+Berdasarkan hasil uji *Log-Rank* diperoleh p-value (0.9) > alpha (0.05) sehingga kesimpulannya tidak terdapat perbedaan yang signifikan untuk kelompok variabel treatment. Artinya baik treament standard maupun treatment test, tidak mempengaruhi waktu survive dari pasien. Adapun variabel lainnya, kelompok usia dan kelompok performa setelah di uji menggunakan *Log-Rank* diperoleh kesimpulan yang sama yakni, terdapat perbedaan waktu survive yang signifikan untuk kelompok dua variabel tersebut.
+
+```{r}
+# log rank age
+
+lr_age <- survdiff(Surv(time ,status)~ age, data = lung)
+lr_age
+```
+
+
+```{r}
+# log rank perform
+
+lr_perform <- survdiff(Surv(time ,status)~ perform, data = lung)
+lr_perform
+```
+
+
+
+### Modelling Analysis
+
+Pada analisa sebelumnya, hanya dibandingkan tiap pengamatan pasien terhadap masing-masing variabelnya saja. Kali ini akan di uji apakah pasien kanker paru-paru memiliki tingkat ketahanan hidup (survive) yang berbeda berdasarkan penyebab tipe sel, performa, dan usia pasien. Pemodelan menggunakan pendekatan 2 metode, yaitu regresi weibull dan regresi log logistik. Masing-masing hasil ringkasan informasinya dapat dilihat pada output dibawah:
+
+```{r}
+regweibull <- survreg(Surv(time, status) ~ age + cell + perform, data = lung, dist = "weibull")
+summary(regweibull)
+```
+
+```{r}
+reglog <- survreg(Surv(time, status) ~ age + cell + perform, data = lung, dist = "loglogistic")
+summary(reglog)
+```
+
+Kriteria yang digunakan dalam pemilihan model terbaik dilihat dari nilai *Akaike Information Criterion* (AIC). Model yang lebih layak digunakan ketika nilai AIC yang semakin rendah. AIC sangat berguna saat harus memilih model terbaik dari himpunan data yang sama. AIC yang diperoleh dari masing-masing metode:
+
+```{r}
+AIC(regweibull)
+AIC(reglog)
+```
+
+Model terbaik diperoleh dari model regresi log logistic, dengan AIC paling terendah yaitu 1435,513:
+
+$$S(t|x)=\frac{1}{1 + (exp([-2.0251 + 0.5293_{age} - 0.7763_{cellAdeno} - 0.7438_{cellSmall} - 0.0388_{cellSquamous} + 0.0359_{perform})]*t)^{0.576}}$$
+
+Jika dilakukan simulasi perhitungan peluang survive untuk dua pasien dengan karakteristik:
+
+* Usia 20 tahun, cell Adeno, skor performa = 20;
+* Usia 50 tahun, cell Squamous, skor performa = 70;
+
+pada saat hari ke-100, diperoleh hasil sebagai berikut:
+
+```{r}
+1/(exp(-2.0251 + 0.5293 +  0.7438  + 0.0359 * 70)*100)^0.576
+```
+
+
+```{r}
+# pasien 1
+
+1/(exp(-2.0251 + 0.5293 +  0.7763  + 0.0359 * 70)*100)^0.576
+```
+
+```{r}
+# pasien 2
+
+1/(exp(-2.0251 + 0.5293 +  0.038  + 0.0359 * 70)*100)^0.576
+```
+
+Maka, pasien usia lebih dari 40 tahub dengan tipe cell squamous pada saat 100 hari mengidap kanker paru peluang bertahan hidup (survive) untuk bertahan hidup lebih tinggi dibandingkan dengan tipe adino. 
+
+### Conclusion
+
+Model regresi survival yang sesuai dengan data pengamatan adalah regresi log logistik. Faktor yang signifikan mempengaruhi laju ketahanan hidup pasien paru-paru berdasarkan data yang diamati, antara lain: usia, tipe sel, dan performa. Pasien dengan tipe sel adeno memiliki risiko paling tinggi dibandingkan lainnya. Dengan hasil pemodelan ini harapannya dapat dijadikan kajian awal untuk meningkatkan tingkat ketahanan hidup pasien paru-paru.
+
+## Lung-Based COVID-19 Detection
+
+### Background
+
+*“It is better to light a candle than curse the darkness."*
+
+Nowadays, every country in a corner of the world is still surviving about COVID-19. COVID-19, the worldwide-pandemic, is an issue that need to be highly concerned by everyone. Based on WHO's data, 'till March 2021, the number of COVID-19's survivor in the world is around 127 million people. *Wow, it's a very high number, right?!* 
+
+Like the quote above, we better to light a candle than curse the darkness. Using the power of technology and especially artificial intelligence, we can light the candle in this darkness because of COVID-19 pandemic. *Yay!*
+
+Because of this virus is a new virus and didn't exist before, the researchers is still investigate the symptomps and the affect of COVID-19 to help the health-sector provide the best action to handle this virus. Based on theconversation.com, lungs are the organ most commonly affected by COVID-19, with a spectrum of severe effects. Because of COVID-19, people can have pneumonia, acute respiratory distress syndrome (ARDS), and other respiratory syndrome. Compared to other respiratory viruses, it causes marked clotting in the small blood vessels of the lungs.
+
+So, in this case we want to detect COVID-19 on the human's body by using Lung CT Scan-Images. 
+
+### Data Preparation
+
+Data that used on this case is images from https://www.kaggle.com/luisblanche/covidct. The images are collected from COVID19-related papers from medRxiv, bioRxiv, NEJM, JAMA, Lancet, etc. CTs containing COVID-19 abnormalities are selected by reading the figure captions in the papers. 
+
+We will use Python to processing our data and build the model
+
+#### Import Library
+
+First of all, we need to import library and package that needed on our next modeling
+
+```{python}
+import numpy as np 
+import random
+import pandas as pd 
+import os
+import cv2
+import shutil
+import matplotlib.pyplot as plt
+import math
+import tensorflow as tf
+from glob2 import glob
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+```
+
+#### Import Data
+
+And then, we import the data that we've already downloaded before. Because of our data is images, we use some library like os and glob to connecting and joining our images data.
+
+We have 2 categories of images, lung of image from COVID-19 survivor and not.
+
+```{python}
+data_root='/covidct/'
+path_positive_covid = os.path.join('covidct/CT_COVID/')
+path_negative_covid = os.path.join('covidct/CT_NonCOVID/')
+```
+
+```{python}
+positive_images = glob(os.path.join(path_positive_covid,"*.png"))
+
+negative_images = glob(os.path.join(path_negative_covid,"*.png"))
+negative_images.extend(glob(os.path.join(path_negative_covid,"*.jpg")))
+```
+
+```{python}
+covid = {'class': 'CT_COVID',
+         'path': path_positive_covid,
+         'images': positive_images}
+
+non_covid = {'class': 'CT_NonCOVID',
+             'path': path_negative_covid,
+             'images': negative_images}
+```
+
+### Exploratory Data Analysis
+
+We can check our data detail to make sure that we already import the data properly.
+
+```{python}
+ex_positive = cv2.imread(os.path.join(positive_images[0]))
+ex_negative = cv2.imread(os.path.join(negative_images[0]))
+
+fig = plt.figure(figsize=(10, 10))
+fig.add_subplot(1, 2, 1)
+plt.imshow(ex_positive)
+fig.add_subplot(1,2, 2)
+plt.imshow(ex_negative)
+```
+
+```{python}
+#Check the number of Positive and Negative Cases
+print("Total Positive Cases Covid19 images: {}".format(len(positive_images)))
+print("Total Negative Cases Covid19 images: {}".format(len(negative_images)))
+```
+
+### Modeling
+
+The image classification is a classical problem of image processing, computer vision and machine learning fields. With image classification, machine can classifying an image from a fixed set of categories. One of the techniques that can use for image classification is Convolutional Neural Network (CNN) model. 
+
+**Convolutional Neural Network**
+
+Is a neural network in which at least one layer is a convolutional layer. A typical convolutional neural network consists of some combination of the following layers:
+1. Convolutional layers
+2. Pooling layers
+3. Dense layers
+
+To build this model in this project, the workflow that can be used is :
+1. Data Preparation
+2. Modeling
+3. Evaluation
+
+To building the model, there are several step that will be used :
+1. Data Splitting
+2. Determine The Parameters
+3. Building CNN Model
+
+#### Data Splitting 
+
+In this part, we will separate our data to training data and testing data.
+
+Before that, we need to make our directory or the place that we will use on the splitting data.
+
+```{python}
+dirs  = ['train/', 'test/']
+for subdir in dirs:
+    labeldirs = ['CT_COVID', 'CT_NonCOVID']
+    for labldir in labeldirs:
+        newdir = subdir + labldir
+        os.makedirs(newdir, exist_ok=True)
+```
+
+After that, we copy the images to test set and train set.
+
+```{python}
+# Copy Images to Test Set
+
+random.seed(123)
+test_ratio = 0.1
+for cases in [covid, non_covid]:
+    total_cases = len(cases['images']) 
+    num_to_select = int(test_ratio * total_cases) 
+    print(cases['class'], num_to_select)
+    list_of_random_files = random.sample(cases['images'], num_to_select) 
+    for files in list_of_random_files:
+        shutil.copy2(files, 'test/' + cases['class'])
+```
+
+```{python}
+# Copy Images to Train Set
+for cases in [covid, non_covid]:
+    image_test_files = os.listdir('test/' + cases['class']) # list test files 
+    for images in cases['images']:
+        if images.split('/')[-1] not in (image_test_files): #exclude test files from shutil.copy
+            shutil.copy2(images, 'train/' + cases['class'])
+```
+
+```{python}
+# Combine All Images
+
+total_train_covid = len(os.listdir('train/CT_COVID'))
+total_train_noncovid = len(os.listdir('train/CT_NonCOVID'))
+total_test_covid = len(os.listdir('test/CT_COVID'))
+total_test_noncovid = len(os.listdir('test/CT_NonCOVID'))
+
+print("Train sets images COVID: {}".format(total_train_covid))
+print("Train sets images Non COVID: {}".format(total_train_noncovid))
+print("Test sets images COVID: {}".format(total_test_covid))
+print("Test sets images Non COVID: {}".format(total_test_noncovid))
+```
+
+#### Core Model
+
+To building CNN Model, we need to determine the parameters first.
+
+```{python}
+batch_size = 128
+epochs = 15
+IMG_HEIGHT = 150
+IMG_WIDTH = 150
+```
+
+```{python}
+#Generator Scale for Our Data
+
+train_image_generator = ImageDataGenerator(rescale=1./255)
+test_image_generator = ImageDataGenerator(rescale=1./255) 
+```
+
+```{python}
+train_dir = os.path.join('train')
+test_dir = os.path.join('test')
+
+total_train = total_train_covid + total_train_noncovid
+total_test = total_test_covid + total_test_noncovid
+```
+
+```{python}
+#Collecting Training Data
+
+train_data_gen = train_image_generator.flow_from_directory(batch_size=batch_size,
+                                                           directory=train_dir,
+                                                           shuffle=True,
+                                                           target_size=(IMG_HEIGHT, IMG_WIDTH),
+                                                           class_mode='binary')
+```
+
+```{python}
+#Collecting Testing Data
+
+test_data_gen = test_image_generator.flow_from_directory(batch_size=batch_size,
+                                                              directory=test_dir,
+                                                              target_size=(IMG_HEIGHT, IMG_WIDTH),
+                                                              class_mode='binary')
+```
+
+```{python}
+#Building CNN Model
+
+model = Sequential([
+    Conv2D(16, 3, padding='same', activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH ,3)),
+    MaxPooling2D(),
+    Conv2D(32, 3, padding='same', activation='relu'),
+    MaxPooling2D(),
+    Conv2D(64, 3, padding='same', activation='relu'),
+    MaxPooling2D(),
+    Flatten(),
+    Dense(512, activation='relu'),
+    Dense(1)
+])
+```
+
+```{python}
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+```
+
+In this section, we evaluate the model based on parameter and metrics.
+
+```{python}
+model.summary()
+```
+
+### Conclusion
+
+```{python}
+history = model.fit_generator(
+    train_data_gen,
+    steps_per_epoch=total_train // batch_size,
+    epochs=epochs,
+    validation_data=test_data_gen,
+    validation_steps=total_test // batch_size
+)
+```
+
+Yay, we've already build a model with the high accuracy. This model can help healthcare industry to contribute on COVID-19 issue, to detect COVID-19 patient with lung images
+
+
+<!--chapter:end:06-health.Rmd-->
+
+# Media
+
+## Causal Impact on Leads generation
+
+### Background
+
+Dalam proses bisnis, tim marketing mempunyai peran untuk meningkatkan *brand awereness* sebuah produk yang dijual. Ketika upaya menarik perhatian pelanggan untuk mencari tahu produk atau layanan yang disediakan sukses akan menghasilkan sebuah *leads*. Simpelnya, leads adalah orang-orang yang tertarik pada produk atau layanan bisnis. Di era digital, *leads* dapat diartikan sebagai orang yang mengunjungi website secara langsung maupun melalui iklan, orang yang melakukan like, share terhadap konten atau kampanye yang sedang dilakukan. Selanjutnya, prospek ketertarikan ini nantinya akan disimpan untuk kemudian diarahkan kepada tim sales. Banyak sekali upaya yang dapat dilakukan untuk menghasilkan sebuah *leads*. Mulai dari membuat konten kreatif, iklan, menulis artikel, membagikan *ebook*,  kode prome dan lain sebagainya. 
+
+Perlu dilakukan analisa seberapa efektif kampanye yang dilakukan untuk menghasilkan peningkatan leads. *Causal Impact* adalah sebuah analisis yang dapat digunakan untuk mencari kesimpulan secara statistik apakah ada perbedaan yang signifikan untuk *lead generation* dari periode sebelum kampanye dilakukan. Kesimpulan yang dapat diperoleh, apakah leads tersebut adalah hasil dari kampanye yang dilakukan, atau berasal dari faktor lain yang tidak teramati.
+
+### Modelling Analysis
+
+```{r}
+library(tidyverse)
+library(CausalImpact)
+library(readxl)
+library(forecast)
+library(TSstudio)
+```
+
+Data berasal dari hasil googleanalytics sebuah website. Untuk pemodelan *post-period*, akan digunakan 37 hari sebelumnya sebagai data training. Pertanyaan bisnisnya yaitu pada hari ke-38 dan seterusnya, setelah kampanye dilakukan, apakah memperoleh peningkatan leads yang signifikan?
+
+```{r}
+data <- read_csv("assets/09-media/analytics.csv")
+```
+
+```{r}
+glimpse(data)
+```
+
+Kita pilih beberapa kolom yang menjadi fokus analisis ini, yaitu datetime (harian) dan `unique views` yang berisi informasi berapa banyak orang yang mengunjungi halaman website tersebut.
+
+```{r}
+actual <- data %>% 
+  mutate(
+    datetime = lubridate::as_datetime(as.character(datetime))
+  ) %>% 
+  dplyr::select(datetime, unique_views) %>% 
+  na.omit()
+
+head(actual)
+```
+
+Leads generation yang dihasilkan paling tinggi ketika hari Rabu. Informasi tersebut dapat dijadikan pertimbangan penentuan hari untuk memulai kampanye.
+
+```{r}
+
+actual %>% 
+  mutate(
+    wdays = lubridate::wday(datetime, label = TRUE)
+  ) %>% 
+  group_by(wdays) %>% 
+  summarise(total_views = sum(unique_views)) %>% 
+  ungroup() %>% 
+  mutate(
+    label = scales::comma(total_views)
+  ) %>% 
+  ggplot(
+    mapping = aes(x = wdays, y = total_views)
+  ) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Views Per Days",
+    subtitle = "Period: May to July",
+    y = NULL,
+    x = "Day of Week"
+  ) +
+  theme_minimal() +
+  geom_text(
+    aes(label = label, y = total_views + max(total_views) * 0.075) , size = 3
+  )
+
+```
+
+Seperti yang dijelaskan sebelumnya, akan di-subset 37 hari sebelum kampanye diberikan dan disimpan ke objek `pre_campaign`. Dari sinilah, kita dapat melihat  pergerakan leads dan memperikirakan peningkatan yang dihasilkan sejak kampanye dilakukan. 
+
+```{r}
+pre_campaign <- actual %>% 
+  slice(1:37)
+```
+
+Selanjutnya, membuat objek *time series* dan melakukan pemodelan untuk menjadikan *banchmark* dari leads yang dapat kita peroleh jika tidak menggunakan kampanye. Kita akan gunakan Holtwinter sebagai metode untuk melakuan peramalan (forecast) 16 hari kedepan.
+
+```{r}
+ts_campaign <- ts(pre_campaign$unique_views, frequency = 7)
+fit_hw <- HoltWinters(ts_campaign)
+forecast <- forecast(fit_hw, 16)
+```
+
+Kita gabungkan data periode sebelum dilakukan kampanye dan hasil ramalannya yang disimpan ke objek `append_data`.
+
+```{r}
+forecast_data <- data.frame(
+  datetime = lubridate::as_datetime(seq.Date(from = as.Date("2018-06-24"), by = "day", length.out = 16)),
+  unique_views = forecast$mean
+)
+
+
+append_data <- pre_campaign %>% 
+  bind_rows(forecast_data)
+```
+
+```{r}
+ggplot(data = append_data, mapping = aes(x = datetime, y = unique_views)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point() +
+  labs(
+    title = "Forecast Projection",
+    y = "Total Unique Views"
+  ) +
+  theme_minimal()
+```
+
+Dan kita juga mempunyai data aktual untuk periode tersebut. Kita perhatikan terjadi peningkatan total pengunjung website.
+
+
+```{r}
+actual %>% 
+  ggplot(mapping = aes(x = datetime, y = unique_views)) + 
+  geom_line(color = "steelblue", size = 1) +
+  geom_point() +
+  labs(
+    title = "Data aktual jumlah pengunjung website",
+    subtitle = "Periode 16 Mei hingga 17 Juli",
+    y = NULL
+  ) +
+  theme_minimal()
+``` 
+
+Untuk memperkirakan efek kausal, kita mulai dengan menentukan periode mana dalam data yang harus digunakan untuk melatih model (periode pra-intervensi) dan periode mana untuk menghitung prediksi kontrafaktual (periode pasca intervensi).
+
+```{r}
+pre <- c(1,37)
+post <- c(38, 53)
+```
+
+Sintaks diatas berarti, poin observasi ke-1 sampai dengan 37 akan digunakan untuk training, dan poin observasi ke 38 hingga 53 untuk menghitung prediksi, atau kita juga bisa mendefinisikannya ke format interval tanggal (date). Kemudian ubah datanya menjadi format matriks sebagai syarat analisis dengan packages `CausalImpact`. 
+
+```{r}
+pre <- as.Date(c("2018-05-16", "2018-06-24"))
+post <- as.Date(c("2018-06-25", "2018-07-10"))
+```
+
+```{r}
+time.points <- seq.Date(as.Date("2018-05-16"), by = "days", length.out = 53)
+data_ci <- zoo(
+  cbind(actual$unique_views, append_data$unique_views), 
+  time.points
+)
+```
+
+Sekarang kita sudah memiliki data yang siap untuk memverifikasi efek kausal dari kampanye.
+
+```{r message=FALSE}
+impact <- CausalImpact(data = data_ci, pre.period = pre, post.period = post)
+plot(impact)
+```
+
+Secara default, plot berisi dari tiga panel. Panel pertama `original` menunjukkan data dan prediksi kontrafaktual untuk periode pasca kampanye. Panel kedua `pointwise` menunjukkan perbedaan antara data aktual yang diamati (leads) dan prediksi. Panel ketiga `cumulative` menggambarkan efek kumulatif dari intervensi (kampanye) yang dilakukan.
+
+Hasil ini memiliki asumsi bahwa hubungan antara leads generation dan deret waktu pengamatan, sebagaimana ditetapkan selama pre-period, tetap stabil sepanjang post-period. 
+
+Kita dapat lihat informasi statistiknya dengan mengunnakan perintah `summary(impact)`.
+
+```{r}
+summary(impact)
+```
+
+Kita dapat memperoleh informasi dari actual dan predicted effect (average) serta efek absolut dan relatifnya. Output informasi statistik di atas mengatakan, leads generation setelah dilakukan kampanye mengalami peningkatan sebesar 44%, dari perkiraan rata-rata pengunjung websitenya sebanyak 984 orang menjadi 1417 kenyataannya.
+
+Untuk panduan interpretasi yang benar dari hasil tabel ringkasan, packages `CausalImpact` menyediakan teks interpretasinya, yang dapat kita print menggunakan perintah:
+
+```{r results="hide"}
+interpretasi <- summary(impact, "report")
+
+print(interpretasi)
+```
+
+**Hasilnya interpretasi teksnya akan seperti berikut:**
+
+Analysis report {CausalImpact}
+
+During the post-intervention period, the response variable had an average value of approx. 1.42K. By contrast, in the absence of an intervention, we would have expected an average response of 0.98K. The 95% interval of this counterfactual prediction is [0.87K, 1.09K]. Subtracting this prediction from the observed response yields an estimate of the causal effect the intervention had on the response variable. This effect is 0.43K with a 95% interval of [0.33K, 0.54K]. For a discussion of the significance of this effect, see below.
+
+Summing up the individual data points during the post-intervention period (which can only sometimes be meaningfully interpreted), the response variable had an overall value of 18.42K. By contrast, had the intervention not taken place, we would have expected a sum of 12.79K. The 95% interval of this prediction is [11.35K, 14.19K].
+
+The above results are given in terms of absolute numbers. In relative terms, the response variable showed an increase of +44%. The 95% interval of this percentage is [+33%, +55%].
+
+This means that the positive effect observed during the intervention period is statistically significant and unlikely to be due to random fluctuations. It should be noted, however, that the question of whether this increase also bears substantive significance can only be answered by comparing the absolute effect (0.43K) to the original goal of the underlying intervention.
+
+The probability of obtaining this effect by chance is very small (Bayesian one-sided tail-area probability p = 0.001). This means the causal effect can be considered statistically significant. 
+
+<!--chapter:end:07-Media.Rmd-->
+
+# Travel and Accomodation
+
+## Topic Modelling and Sentiment Analysis on Hotel Reviews Data in Europe
+
+```{r echo=FALSE}
+#Sys.setenv(RETICULATE_PYTHON = "/Users/ariqleesta/opt/anaconda3/envs/ariq/bin/python")
+library(reticulate)
+
+reticulate::use_python(python = '/Users/ariqleesta/opt/anaconda3/envs/ariq/bin/python', required = T)
+sys <- import("sys")
+py_run_string("import os")
+py_run_string("os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = '/Users/ariqleesta/opt/anaconda3/plugins/platforms'")
+```
+
+### Background
+Benua Eropa merupakan benua yang menjadi destinasi impian bagi para wisatawan di berbagai belahan dunia. Hal ini karena Benua Eropa memiliki banyak situs wisata yang menarik perhatian akan keunikan dan keindahannya. Tentunya para wisatawan membutuhkan tempat untuk singgah sementara selama menikmati liburan. Untuk meningkatkan kepuasan para wisatawan, dibutuhkan pemilihan hotel yang tepat agar dapat memberikan wisatawan pengalaman beristirahat yang terbaik. Untuk itu, melihat seberapa baik tingkat pelayanan hotel secara teliti tentunya diperlukan. Tingkat pelayanan hotel dapat dilihat salah-satunya melalui *rating* dari hotel tersebut. Meskipun demikian, *rating* dari hotel tidak sepenuhnya merepresentasikan tingkat kelayakan dari hotel tersebut, terutama untuk fasilitas-fasilitasnya secara spesifik. Maka dari itu, perlu dilakukan analisis sentimen berdasarkan ulasan dari wisatawan lain yang pernah singgah di hotel tersebut. Sentimen analisis diperlukan untuk memberikan penilaian terhadap fasilitas-fasilitas dan pelayanan hotel yang disediakan karena sering kali kita tidak ingin membaca setiap ulasan hotel-hotel tersebut satu per satu. Harapannya, dengan analisis ini, hasil penilaian dari setiap aspek pelayanan dari hotel-hotel ini dapat dijadikan pertimbangan dalam memilih hotel dengan pengalaman menginap yang terbaik. 
+
+### Data Preparation
+
+Dataset yang digunakan adalah dataset yang bersumber dari kaggle (https://www.kaggle.com/jiashenliu/515k-hotel-reviews-data-in-europe) yang memuat 515 ribu ulasan dari hotel-hotel yang berada di ibukota negara-negara di Benua Eropa.
+
+```{python, include = False}
+import sys
+print(sys.executable)
+```
+
+```{python}
+# Environment
+import os
+
+# Data Manipulation Tools
+import pandas as pd
+import numpy as np
+from fuzzymatcher import link_table, fuzzy_left_join
+import difflib
+import re # for regular expressions
+pd.options.display.max_rows = 1000
+pd.options.display.max_columns = 100
+
+# Data Visualization Tools
+import matplotlib.pyplot as plt
+import seaborn as sns
+#%matplotlib inline
+plt.style.use('bmh')
+
+# libraries for displaying images
+from IPython.display import HTML, Image 
+from IPython.core.display import HTML 
+from IPython.display import display
+import selenium
+
+# NLP Module
+import nltk # Natural language processing toolkit
+from nltk import FreqDist # Frequency distribution
+from nltk.corpus import stopwords
+from wordcloud import WordCloud,STOPWORDS 
+from textblob import TextBlob
+from nltk.stem import WordNetLemmatizer 
+from nltk import sent_tokenize
+from math import pi
+import pickle 
+import pyLDAvis
+
+
+# Network
+from nltk import bigrams, ngrams
+import networkx as nx 
+import itertools
+import collections
+
+# Location Modules
+import folium
+
+# Ignore Warnings
+import warnings
+warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category= DeprecationWarning)
+
+```
+
+
+```{python}
+df = pd.read_csv('https://archive.org/download/hotel-reviews/Hotel_Reviews.csv')
+print(df.shape)
+df.head(2)
+```
+
+```{python}
+len(df['Hotel_Address'].unique())
+```
+
+Dataset ini memiliki 515738 baris dan 17 kolom dengan jumlah hotel sebanyak 1493. Sebelum memulai analisis lebih lanjut, kita perlu mengetahui tipe data dari setiap kolom dataset tersebut.
+
+```{python}
+df.dtypes
+```
+
+Kemudian kita perlu meninjau mengenai *missing value* atau data yang hilang dari dataset tersebut. Pengamatan data yang hilang dapat dilakukan secara visual dengan bantuan *library* missingno.
+
+```{python}
+import missingno as msno
+plt.figure()
+msno.matrix(df, figsize = (20,8))
+plt.show()
+```
+
+```{python}
+df.isnull().sum()
+```
+
+Kolom *lat* dan *lng* yang merupakan komponen koordinat dari dataset tidak tersedia untuk beberapa hotel. Jumlah baris yang tidak memiliki data koordinat sangat sedikit jika dibandingkan total data keseluruhan sehingga baris-baris ini dapat dihilangkan karena koordinat diperlukan untuk memberikan informasi lokasi dari hotel tersebut kepada para wisatawan.
+
+```{python}
+# drop null coordinates
+df.dropna(inplace = True)
+```
+
+### Exploratory Data Analysis
+
+Kata *No Negative* pada kolom *Negative Review* dan *No Positive* pada kolom *Positive Review* menandakan bahwa review tersebut tidak mengandung ulasan positif atau ulasan negatif. Sehingga kata *No Negative* dan *No Positive* dapat diganti dengan *empty string* saja.
+
+```{python}
+# replace No Negative and No Positive with empty string
+df['Negative_Review'] = df['Negative_Review'].replace({'No Negative': ''})
+df['Positive_Review'] = df['Positive_Review'].replace({'No Positive': ''})
+```
+
+Berikut adalah distribusi dari nilai *rating* rata-rata yang diberikan oleh pemberi ulasan terkait hotel-hotel pada dataset ini. *Average Score* memiliki rentang 5.2 untuk nilai terendah dan 9.9 untuk nilai tertinggi.
+
+```{python}
+# Plot average score
+
+data_plot = df[["Hotel_Name","Average_Score"]].drop_duplicates()
+fig, ax = plt.subplots(figsize= (30,7))
+sns.countplot(ax = ax,x = "Average_Score",data=data_plot)
+ax.set_xlabel('Average Score')
+ax.set_ylabel('Score Counts')
+plt.show()
+```
+
+Berikut akan dilakukan analisis teks, tahap-tahap yang akan dilakukan antara lain:
+* Mendefinisikan *Stopword* <br>
+ *Stopword* adalah kata-kata yang tidak atau sedikit mengandung makna dari kalimat keseluruhan. *Stopword* biasanya berupa partikel (*eg: a, an, the, is, am, are*) atau kata penghubung (*eg: and, or, of*).
+* Membuat semua kata menjadi huruf kecil/*lowercase* <br>
+Untuk mempermudah memproses data tekstual, perlu dilakukan *lowercasing* karena algoritma dalam text processing membedakan huruf besar dan huruf kecil atau *case sensitive*.
+* Menghilangkan *character* yang tidak diinginkan <br>
+ *Character* yang tidak diinginkan bisa berupa simbol simbol seperti titik, koma, tanda seru, tanda tanya, dan lain-lain.
+* Menghilangkan kata-kata yang pendek (kurang dari 4 huruf)
+* *Lemmatizing* <br>
+ *Lemmatizing* adalah mengembalikan kosa kata menjadi kata dasar dari kata tersebut. Sebagai contoh,, kata *studying* dan *studied* memiliki kata dasar yang sama yaitu *study*.
+* Menghilangkan *Stopwords*
+
+* *Tokenization*
+ *Tokenization* adalah proses memecah kalimat menjadi kumpulan kata-kata. Kumpulan kata-kata dalam satu kalimat dimuat dalam satu buah *iterable* atau *list*. Sebagai contoh, untuk kata yang telah di *lemmatizing*, "*Hotel service good*" menjadi ["Hotel", "Service", "Good"].
+
+
+    
+
+```{python}
+# A function to remove stopwords
+def remove_stopwords(rev):
+    rev_new = " ".join([i for i in rev if i not in stop_words])
+    return rev_new
+
+# A function to count the most frequent words
+def freq_words(x, terms = 30):
+    all_words = ' '.join([text for text in x])
+    all_words = all_words.split()
+
+    fdist = FreqDist(all_words)
+    words_df = pd.DataFrame({'word':list(fdist.keys()), 'count':list(fdist.values())})
+
+    # selecting top 20 most frequent words
+    d = words_df.nlargest(columns="count", n = terms) 
+    plt.figure(1, figsize=(20,5))
+    ax = sns.barplot(data=d, x= "word", y = "count")
+    ax.set(ylabel = 'Count')
+    plt.xticks(rotation = 90)
+    plt.show()
+
+# A function to draw word cloud
+def wordcloud_draw(data, color = 'black'):
+    words = ' '.join(data)
+    cleaned_word = ' '.join([word for word in words.split()
+                            if 'http' not in word
+                                and not word.startswith('@')
+                                and not word.startswith('#')
+                                and word != 'RT'
+                            ])
+    
+    wordcloud = WordCloud(collocations=False,
+              stopwords=STOPWORDS,
+              background_color=color,
+              width=500,
+              height=100,).generate(cleaned_word)
+    plt.figure(1,figsize=(13, 13))
+    plt.imshow(wordcloud)
+    plt.axis('off')
+    plt.show()
+    
+# Create a function to get the subjectivity
+def getSubjectivity(text):
+    return TextBlob(text).sentiment.subjectivity
+
+# Create a function to get the polarity
+def getPolarity(text):
+    return TextBlob(text).sentiment.polarity
+```
+
+```{python}
+df_reviews = df[['Hotel_Name', 'Negative_Review', 'Positive_Review']]
+df_reviews.head()
+
+# Define stopwords
+stop_words = stopwords.words('english')
+
+# make entire text lowercase
+df_reviews['Positive_Review'] = [r.lower() for r in df_reviews['Positive_Review']] 
+df_reviews['Negative_Review'] = [r.lower() for r in df_reviews['Negative_Review']]
+
+# Remove unwanted characters, numbers and symbols
+df_reviews['Positive_Review'] = df_reviews['Positive_Review'].str.replace("[^a-zA-Z#]", " ")
+df_reviews['Negative_Review'] = df_reviews['Negative_Review'].str.replace("[^a-zA-Z#]", " ")
+
+# remove short words (length < 4)
+df_reviews['Positive_Review'] = df_reviews['Positive_Review'].apply(lambda x: ' '.join([w for w in x.split() if len(w)>3]))
+df_reviews['Negative_Review'] = df_reviews['Negative_Review'].apply(lambda x: ' '.join([w for w in x.split() if len(w)>3]))
+
+# Lemmatizing 
+lemmatizer = WordNetLemmatizer() 
+df_reviews['Positive_Review'] = [' '.join([lemmatizer.lemmatize(word) for word in r.split(' ')]) for r in df_reviews['Positive_Review']]
+df_reviews['Negative_Review'] = [' '.join([lemmatizer.lemmatize(word) for word in r.split(' ')]) for r in df_reviews['Negative_Review']]
+
+# remove stopwords from the text
+df_reviews['Positive_Review'] = [remove_stopwords(r.split()) for r in df_reviews['Positive_Review']]
+df_reviews['Negative_Review'] = [remove_stopwords(r.split()) for r in df_reviews['Negative_Review']]
+
+
+# Tokenization
+df_reviews['Positive_Review'] = [r.split() for r in df_reviews['Positive_Review']]
+df_reviews['Negative_Review'] = [r.split() for r in df_reviews['Negative_Review']]
+```
+
+```{python}
+def flatten(data):
+    l = []
+    for i in data:
+        for word in i:
+            l.append(word)
+    return l
+pos = flatten(df_reviews['Positive_Review'].tolist())       
+neg = flatten(df_reviews['Negative_Review'].tolist())  
+```
+
+Berikut adalah grafik frekuensi tertinggi untuk kata-kata yang berada pada kolom *Positive Review* dan *Negative Review*. Pada kolom *Positive Review*, kata yang paling banyak diucapkan adalah *staff*, *location*, dan *room*, sedangkan Pada kolom *Negative Review*, kata yang paling banyak diucapkan adalah *room*, *hotel*, dan *breakfast*.
+
+```{python}
+freq_words(pos, 30)# Frequency distribution of common words in positive reviews
+```
+
+```{python}
+freq_words(neg, 30) # Checking frequency of most used words in negative reviews
+```
+
+Kita dapat melihat kata-kata yang sering muncul dengan bantuan visualisasi *wordcloud*. Kata yang lebih sering muncul akan berukuran lebih besar daripada yang lain.
+
+```{python}
+# Using wordcloud to visually represent the text data
+print("Positive reviews")
+wordcloud_draw(pos,'white')
+
+```
+```{python}
+# Using wordcloud to visually represent the text data
+print("Negative reviews")
+wordcloud_draw(neg)
+```
+### Modelling
+
+Dalam menyarankan para wisatawan mengenai hotel dengan pelayanan terbaik, kita perlu meninjau terlebih dahulu aspek-aspek apa yang relevan dalam ulasan-ulasan tersebut sebelum bisa dilanjutkan ke penilaian. Aspek-aspek ini dapat berupa fasilitas-fasilitas atau pelayanan yang diberikan oleh hotel tersebut tergantung seberapa banyak dan relevan hal tersebut dibicarakan di dalam ulasan. Sebagai contoh, anggaplah kita tidak mengetahui fasilitas-fasilitas apa yang diberikan hotel. Dari review tersebut ada yang membicarakan mengenai kamar, kolam renang, kafe, *rollercoaster* bahkan kebun binatang. Bagaimana kita tahu bahwa topik yang relevan adalah kamar, kolam renang, dan kafe? Bisa saja suatu hotel memiliki *rollercoaster* atau berada di dekat kebun binatang. Untuk menentukan topik-topik yang relevan dalam penilaian, dibutuhkan suatu proses bernama *Topic Modelling*. *Topic Modelling* menilai seberapa relevan suatu kata terhadap kalimat yang membawa pengaruh terbesar dalam pemaknaan suatu kalimat. Salah satu metode dalam *Topic Modelling* dan yang akan digunakan dalam analisis ini adalah metode *Latent Dirichlet Allocation (LDA)*. LDA memodelkan topik berdasarkan probabilitas dengan mengasumsikan setiap topik merupakan gabungan dari beberapa pasangan kata, dan setiap dokumen merupakan gabungan dari beberapa topik.
+
+Untuk melakukan *Topic Modelling* dengan metode LDA dapat dilakukan dengan bantuan suatu *library* bernama gensim. 
+
+```{python}
+import gensim
+from gensim.utils import simple_preprocess
+LDA = gensim.models.ldamodel.LdaModel
+```
+
+```{python}
+import gensim.corpora as corpora
+# Create Dictionary
+id2word_pos = corpora.Dictionary(df_reviews['Positive_Review'])
+id2word_neg = corpora.Dictionary(df_reviews['Negative_Review'])
+# Create Corpus
+texts_pos = df_reviews['Positive_Review']
+texts_neg = df_reviews['Negative_Review']
+# Term Document Frequency
+corpus_pos = [id2word_pos.doc2bow(text) for text in texts_pos]
+corpus_neg = [id2word_neg.doc2bow(text) for text in texts_neg]
+```
+
+```{python}
+from pprint import pprint
+# number of topics
+num_topics = 10
+# Build LDA model
+lda_model_pos = gensim.models.LdaMulticore(corpus=corpus_pos,
+                                       id2word=id2word_pos,
+                                       num_topics=num_topics)
+
+lda_model_neg = gensim.models.LdaMulticore(corpus=corpus_neg,
+                                       id2word=id2word_neg,
+                                       num_topics=num_topics)
+```
+
+Berikut adalah hasil pemilihan 10 kumpulan topik untuk ulasan positif
+
+```{python}
+pprint(lda_model_pos.print_topics())
+```
+
+Berikut adalah hasil pemilihan 10 kumpulan topik untuk ulasan negatif
+
+```{python}
+pprint(lda_model_neg.print_topics())
+```
+
+Berikut adalah potongan kode untuk melakukan visualisasi pemilihan topik dengan model LDA.
+
+```{python}
+# Visualize the topics
+
+def ldaviz(lda_model, corpus, id2word, num_topics, filename):
+    pyLDAvis.enable_notebook()
+    LDAvis_data_filepath = os.path.join(os.getcwd()+str(num_topics))
+    # # this is a bit time consuming - make the if statement True
+    # # if you want to execute visualization prep yourself
+    if True:
+        LDAvis_prepared = pyLDAvis.gensim.prepare(lda_model, corpus, id2word)
+        with open(LDAvis_data_filepath, 'wb') as f:
+            pickle.dump(LDAvis_prepared, f)
+    # load the pre-prepared pyLDAvis data from disk
+    with open(LDAvis_data_filepath, 'rb') as f:
+        LDAvis_prepared = pickle.load(f)
+    return pyLDAvis.save_html(LDAvis_prepared, os.getcwd()+ '/' + filename +'.html')
+    #return LDAvis_prepared
+```
+
+```{python}
+# Visualization for Positive Reviews
+# ldaviz(lda_model_pos, corpus_pos, id2word_pos, num_topics, 'ldavizpos')
+```
+
+```{python}
+# Visualization for Negative Reviews
+# daviz(lda_model_neg, corpus_neg, id2word_neg, num_topics, 'ldavizneg')
+```
+
+Topik-topik tersebut di *extract* dan dihitung skor kumulatif untuk masing-masing topik.
+
+```{python}
+# Extract all topics from negative and positive
+
+topics_pos = []
+topics_neg = []
+
+scores_pos = []
+scores_neg = []
+
+for pos, neg in zip(lda_model_pos.print_topics(), lda_model_neg.print_topics()):
+    
+    topic_pos = re.findall("(?<=\")[a-z]+(?=\")",pos[1])
+    topics_pos = topics_pos + topic_pos
+    
+    score_pos = re.findall("\d\.\d+",pos[1])
+    scores_pos = scores_pos + score_pos
+
+    topic_neg = re.findall("(?<=\")[a-z]+(?=\")",neg[1])
+    topics_neg = topics_neg + topic_neg
+    
+    score_neg = re.findall("\d\.\d+",pos[1])
+    scores_neg = scores_neg + score_neg
+    
+positive_topics = pd.DataFrame({'Topics':topics_pos, 'Score':scores_pos})
+positive_topics['Score'] = positive_topics['Score'].astype(float)
+positive_topics = positive_topics.groupby('Topics').sum().reset_index()\
+.sort_values('Score',ascending = False)
+
+negative_topics = pd.DataFrame({'Topics':topics_neg, 'Score':scores_neg})
+negative_topics['Score'] = negative_topics['Score'].astype(float)
+negative_topics = negative_topics.groupby('Topics').sum().reset_index()\
+.sort_values('Score',ascending = False)
+```
+
+Maka diperoleh kumpulan topik beserta *score* seberapa relevan suatu topik terhadap ulasan yang diberikan yang ditabulasikan sebagai berikut.
+
+
+
+```{python}
+#inner join to see topics that belongs to each other
+pd.merge(positive_topics, negative_topics, 'inner', 'Topics')
+```
+
+Dalam hal ini, kita dapat memilih secara manual atau memilih dengan mengambil topik dengan skor yang paling besar. Tahap ini disebut *Topic Labelling*. Namun dalam hal ini kita cukup memilih topik secara manual dengan mengandalkan pengetahuan kita mengenai fasilitas apa yang sering atau selalu disediakan oleh pihak hotel.
+
+```{python}
+# Topic labelling
+aspects = ['staff', 'room', 'breakfast', 'service', 'view', 'restaurant', 'bathroom', 'pool']
+```
+
+Untuk memperoleh hasil yang merepresentasikan tiap hotel, alangkah lebih semua review dijadikan menjadi satu dokumen untuk tiap hotel. Sehingga kita dapat memperoleh satu buah dokumen penuh berisi review untuk tiap-tiap hotel.
+
+```{python}
+df_reviews = df_reviews.groupby('Hotel_Name')['Negative_Review','Positive_Review'].sum()
+```
+
+Dari aspek-aspek ini, kita akan menentukan *word correlation* dari aspek yang kita inginkan, yaitu mencari kata sebelum dan sesudah dari topik yang diinginkan. Hal ini bertujuan untuk melihat hubungan dari aspek (fasilitas) yang diberikan hotel terhadap kata yang diberikan oleh wisatawan melalui ulasannnya. Sebagai contoh, kita ingin melihat ruangan, namun kita perlu tahu ruangan itu seperti apa menurut para wisatawan. Bisa jadi ruangan itu baik, buruk, sempit, luas, mengecewakan, dan lain-lain. Metode ini bernama *ngram* yaitu **memasangkan kata dengan kata disebelahnya (baik sebelum atau sesudahnya)**.
+
+Kita ambil contoh untuk satu dokumen (satu buah hotel). Misalkan aspek yang ingin dilihat adalah **room** dengan jumlah kata dalam satu pasangan **n** adalah 2.
+
+```{python}
+# let's take a look at example
+# if we want to extract only room
+
+n = 2
+example = df_reviews['Negative_Review'][2]
+terms_ngram = [list(ngrams(w,n)) for w in [example]]
+room_ngram = [i for i in terms_ngram[0] if 'room' in i]
+room_ngram[:5]
+```
+
+Untuk mendapatkan sebagian dokumen yang hanya membicarakan **room**, kita perlu menggabungkan semua **ngram** menjadi satu dokumen dengan metode **chain**.
+
+```{python}
+# Flatten list of room ngrams in clean list
+
+room_ngram_flatten = list(itertools.chain(*room_ngram))
+room_ngram_flatten[:6]
+```
+
+Kita dapat menghitung jumlah pasangan kata yang sama dalam satu dokumen dengan menggunakan *method* **collections.Counter**.
+
+```{python}
+ngram_counts = collections.Counter(room_ngram)
+ngram_df = pd.DataFrame(ngram_counts.most_common(20),
+                             columns=['ngram', 'count'])
+
+ngram_df.head()
+```
+
+Setelah itu, kita akan melakukan visualisasi mengenai **word correlation** dari aspek **room** yang kita pilih sebelumnya dengan bantuan *library* **networkx**. Sebelum, melakukan visualisasi, tabel frekuensi **ngram_df** alangkah lebih baik diubah ke dalam bentuk *dictionary*. Hasil dari visualisasi i ni menampilkan korelasi kata-kata terhadap aspek yang kita pilih. Semakin dekat kata-kata tersebut satu sama lain, semakin tinggi frekuensi dari kemunculan pasangan kata tersebut.
+
+```{python}
+# we visualize
+# transform to dict first
+d = ngram_df.set_index('ngram').T.to_dict('records')
+d[0]
+```
+
+```{python}
+# Create network plot 
+G = nx.Graph()
+
+# Create connections between nodes
+for k, v in d[0].items():
+    G.add_edge(k[0], k[1], weight=(v * 10))
+
+fig, ax = plt.subplots(figsize=(10, 8))
+
+pos = nx.spring_layout(G, k=2)
+
+# Plot networks
+nx.draw_networkx(G, pos,
+                 font_size=16,
+                 width=3,
+                 edge_color='grey',
+                 node_color='purple',
+                 with_labels = False,
+                 ax=ax)
+
+# Create offset labels
+for key, value in pos.items():
+    x, y = value[0]+.135, value[1]+.045
+    ax.text(x, y,
+            s=key,
+            bbox=dict(facecolor='red', alpha=0.25),
+            horizontalalignment='center', fontsize=13)
+    
+plt.show()
+```
+
+Agar *script* dapat digunakan berulang-ulang, alangkah lebih baik jika dimuat dalam bentuk *function*. Dengan *function*, kita juga dapat mengganti nilai **n** dalam **ngrams** sesuai kebutuhan.
+
+```{python}
+## create functions to be utilized for further observation
+
+# Function to create ngrams (for only 1 topics)
+def create_ngrams(text_array, n, aspect):
+    terms_ngram = [list(ngrams(w,n)) for w in [text_array]]
+    ngram = [i for i in terms_ngram[0] if aspect in i]
+    return ngram
+
+#create_ngrams(example, 2, aspect = 'room')
+
+def ngrams_flatten(ngram):
+    # Flatten list of bigrams in clean tweets
+    ngram = list(itertools.chain(*ngram))
+    return ngram
+
+# Function to count the frequency
+def ngrams_frequency(ngram,  num_most_common):
+    ngram_counts = collections.Counter(ngram)
+    ngram_df = pd.DataFrame(ngram_counts.most_common(num_most_common),
+                             columns=['ngram', 'count'])
+    return ngram_df
+
+#ngrams_frequency(create_ngrams(example, 2, aspect = 'room'), 10)
+
+# Create network plot 
+
+def plot_network(dataframe):
+    
+    try:
+        # transform to dict first
+        d = dataframe.set_index('ngram').T.to_dict('records')
+        d[0]
+        G = nx.Graph()
+
+        # Create connections between nodes
+        for k, v in d[0].items():
+            G.add_edge(k[0], k[1], weight=(v * 10))
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+    
+        pos = nx.spring_layout(G, k=2)
+
+        # Plot networks
+        nx.draw_networkx(G, pos,
+                         font_size=16,
+                         width=3,
+                         edge_color='grey',
+                         node_color='purple',
+                         with_labels = False,
+                         ax=ax)
+
+        # Create offset labels
+        for key, value in pos.items():
+            x, y = value[0]+.135, value[1]+.045
+            ax.text(x, y,
+                    s=key,
+                    bbox=dict(facecolor='red', alpha=0.25),
+                    horizontalalignment='center', fontsize=13)
+    
+        plt.show()
+        
+    except:
+        return "No Particular Topic"
+```
+
+```{python}
+#let's see what they said about staff
+plot_network(ngrams_frequency(create_ngrams(example, 3, aspect = 'staff'), 25))
+```
+
+```{python}
+# How about breakfast?
+plot_network(ngrams_frequency(create_ngrams(example, 4, aspect = 'breakfast'), 25))
+```
+
+Kita telah mendapatkan aspek-aspek yang akan kita jadikan variabel penilaian terkait hotel di dataset ini yang telah disimpan di dalam variabel **aspects**. Berdasarkan aspek-aspek tersebut, dilakukan sentimen analisis untuk menilai seberapa baik fasilitas dan pelayanan hotel berdasarkan review yang disajikan dalam sebuah nilai. Hasil dari sentiment analysis memiliki rentang -1 (paling buruk) sampai 1 (paling baik) yang nantinya dinormalisasi dalam rentang 0 - 10.
+
+```{python}
+# let's do sentiment analysis for each aspects of each hotels
+aspects
+```
+
+Sebelum melakukan analisis sentimen, kolom *Negative Review* dan *Positive Review* digabungkan agar tidak terjadi bias dalam penilaian. Selanjutnya untuk setiap aspek dimuat dalam **ngrams** dengan n = 3 (biasa disebut *trigrams*). Hasil dari *trigrams* ini digabungkan (diratakan dengan metode *flatten*) sehingga didapat satu dokumen baru yang hanya membahas aspek tersebut. Satu dokumen tersebut dihitung skor sentimennya berdasarkan *polarity* atau ekspresi sentimen dari wisatawan terkait aspek tersebut.
+
+```{python}
+# Combine the review
+df_reviews['Review'] = df_reviews['Negative_Review'] + df_reviews['Positive_Review']
+
+#plot_network(ngrams_frequency(create_ngrams(example, 3, aspect = 'staff'), 25))
+# extract each ngrams from each Hotel Reviews based on aspects
+from tqdm import tqdm
+
+n = 3
+for aspect in tqdm(aspects):
+    # create empty list to store sentiment score
+    sent_list = []
+    for i in df_reviews['Review']:
+        # create ngrams
+        ngram_i = create_ngrams(i, n, aspect = aspect)
+        # flatten ngrams to make clean list
+        ngram_flatten_i = ngrams_flatten(ngram_i)
+        # Get polarity
+        polarity_i = getPolarity(' '.join(ngram_flatten_i))
+        sent_list.append(polarity_i)
+    
+    df_reviews[aspect] = sent_list
+```
+
+Sehingga didapat nilai untuk masing-masing aspek untuk setiap hotel yang dimuat pada dataframe berikut.
+
+```{python}
+df_reviews.head(2)
+```
+
+Perlu diperhatikan bahwa nilai sentimen masih berupa nilai dalam rentang -1 hingga 1. Untuk mempermudah pemilihan hotel, alangkah lebih baik nilai sentimen dinormalisasi menjadi skor dengan rentang 0 - 10.
+
+```{python}
+# Normalize sentiment in range of 0 - 10
+def normalizeSentiment(x):
+    if max(x) <= 1:
+        return (x-(-1))/(1+1)*10
+    else:
+        return (x)
+
+df_reviews[aspects] = df_reviews[aspects].apply(normalizeSentiment)
+df_reviews.head(2)
+```
+
+Gabungkan kolom-kolom yang memuat informasi tambahan yang dibutuhkan ke dataframe.
+
+```{python}
+col_df = ['Average_Score', 'Total_Number_of_Reviews','Hotel_Name', 'Hotel_Address','lat','lng']
+
+df_merge = pd.merge(df_reviews, df[col_df].drop_duplicates(), how = 'left', on = 'Hotel_Name')
+
+
+def join_list(my_list):
+    return " ".join(my_list)
+
+
+df_merge['Review'] = df_merge['Review'].apply(lambda x: join_list(x))
+df_merge['Negative_Review'] = df_merge['Negative_Review'].apply(lambda x: join_list(x))
+df_merge['Positive_Review'] = df_merge['Positive_Review'].apply(lambda x: join_list(x))
+
+df_merge.head(3)
+```
+
+### Dashboard Ideas
+
+Salah satu cara terbaik untuk memberikan informasi adalah melalui *dashboard* interaktif yang dapat dioperasikan langsung oleh penggunanya. Tentunya kemudahan yang diberikan akan meningkatkan penyerapan informasi oleh pengguna. berikut adalah beberapa ide-ide fitur yang akan dimuat di dalam dashboard tersebut.
+
+```{python}
+# Function for dashboard
+
+def radar_plot(data): # data categories must be stored as index
+
+    plt.figure(figsize=(10,10))
+    # number of variable
+    categories=s.index
+    N = len(s)
+ 
+    # We are going to plot the first line of the data frame.
+    # But we need to repeat the first value to close the circular graph:
+    values= s.iloc[:,0].values.flatten().tolist()
+    values += values[:1]
+    values
+ 
+    # What will be the angle of each axis in the plot? (we divide the plot / number of variable)
+    angles = [n / float(N) * 2 * pi for n in range(N)]
+    angles += angles[:1]
+ 
+    # Initialise the spider plot
+    ax = plt.subplot(111, polar=True)
+
+    # Draw one axe per variable + add labels labels yet
+    plt.xticks(angles[:-1], categories, color='blue', size=20)
+ 
+    # Draw ylabels
+    ax.set_rlabel_position(90)
+    plt.yticks([2,4,6,8], ["2","4","6","8"], color="grey", size=20)
+    plt.ylim(0,10)
+ 
+    # Plot data
+    ax.plot(angles, values, linewidth=2, linestyle='solid')
+ 
+    # Fill area
+    ax.fill(angles, values, 'b', alpha=0.1)
+    
+def plot_coordinate(lat, lng , name = pd.Series(['']), address = pd.Series(['']),  zoom_start = 10, color = 'red', fill_color = 'blue'):   
+    m = folium.Map(location=[lat,lng], zoom_start=zoom_start)
+
+    folium.CircleMarker(
+            [lat.values[0], lng.values[0]],
+            radius=10,
+            color=color,
+            popup='Name: ' + name.values[0] + '\n\n Address: ' + address.values[0],
+            fill = True,
+            fill_color = fill_color,
+            fill_opacity=0.6
+        ).add_to(m)
+    return m
+```
+
+Search bar berfungsi untuk melakukan pemenggalan data (*querying*) untuk mengambil data yang menjadi fokus bagi penggunanya.
+
+```{python}
+# Search Bar
+search = '25hours Hotel beim MuseumsQuartier'
+
+search_data = df_merge[df_merge['Hotel_Name'] == search]
+search_data
+```
+
+Average score menampilkan rating rata-rata yang diberikan oleh wisatawan terdahulu terhadap pengalaman singgah di hotel tersebut.
+
+```{python}
+# Average Score
+search_data['Average_Score'].values[0]
+```
+
+Jumlah orang yang memberikan ulasan juga perlu ditampilkan. Semakin banyak ulasan, semakin *reliable* penilaian tersebut.
+
+```{python}
+# Total Number of Reviews
+search_data['Total_Number_of_Reviews'].values[0]
+```
+
+Titik koordinat diperlukan untuk menyampaikan informasi mengenai lokasi dari hotel tersebut. Hal ini juga bertujuan untuk memberikan informasi mengenai kondisi di sekitar hotel terkait seberapa strategis lokasi hotel tersebut (dekat dengan pusat wisata, pusat pembelanjaan, dan lain-lain).
+
+```{python}
+plot_coordinate(search_data.lat, search_data.lng, search_data.Hotel_Name, search_data.Hotel_Address, zoom_start = 15)
+```
+
+Hasil dari analisis sentimen terkait aspek (fasilitas dan pelayanan) hotel dimuat dalam bentuk visualisasi *radar plot* untuk mempermudah pengambilan keputusan dalam memilih hotel yang akan dijadikan tempat singgah sementara.
+
+```{python}
+# Sentiment Score
+
+s = search_data[aspects].T
+radar_plot(s)
+```
+
+Diagram jaringan (*network diagram*) untuk melihat korelasi kata-kata dengan aspek yang dipilih.
+
+```{python}
+#let's see what they said about staff
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'staff'), 20))
+```
+
+```{python}
+#let's see what they said about room
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'room'), 20))
+```
+
+```{python}
+#let's see what they said about breakfast
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'breakfast'), 20))
+```
+
+```{python}
+#let's see what they said about service
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'service'), 20))
+```
+
+```{python}
+#let's see what they said about view
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'view'), 20))
+```
+
+```{python}
+#let's see what they said about restaurant
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'restaurant'), 20))
+```
+
+```{python}
+#let's see what they said about pool
+plot_network(ngrams_frequency(create_ngrams(search_data['Review'].values[0].split(), 3, aspect = 'pool'), 20))
+```
+
+*Wordcloud* untuk review hotel tersebut untuk melihat kata-kata yang paling sering muncul dalam ulasan wisatawan.
+
+```{python}
+# Draw WordCloud
+wordcloud_draw(search_data['Review'].values[0].split(),'white')
+```
+
+Fungsi untuk mengekspor dataset yang telah diolah untuk pembuatan dashboard.
+
+```{python}
+#df_merge.to_csv('dashboard_data.csv')
+#df_merge.to_excel('dashboard_data.xlsx')
+```
+
+Hasil dari dashboard yang telah dirancang dapat dilihat di laman berikut: https://europehoteldashboard.herokuapp.com/
+
+### Conclusion
+
+Hasil dari analisis ini berupa dashboard yang dapat digunakan para wisatawan untuk menentukan hotel mana yang terbaik dipilih sebagai tempat tinggal sementara selama menikmati liburan. Tentunya dengan adanya dashboard ini, diharapkan para wisatawan mendapatkan pengalaman terbaik dalam menginap. Dashboard ini menampilkan penilaian tidak hanya melalui *rating score* tapi juga mengenai nilai sentimen para wisatawan terdahulu terkait fasilitas-fasilitas dan pelayanan pada hotel tersebut. Fasilitas-fasilitas dan pelayanan yang menjadi aspek penilaian antara lain ruangan, staf hotel, kolam renang, kamar mandi, restoran, pemandangan, pelayanan, dan sarapan. 
+
+
+<!--chapter:end:09-Travel-Accomodation.Rmd-->
+

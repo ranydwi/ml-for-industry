@@ -1,0 +1,6 @@
+"0","library(ROCR)"
+"0","pred_prob <- predict(object = forest_upc,newdata = data_test,type = ""prob"")"
+"0","pred <-  prediction(pred_prob[,2],labels = data_test$Churn)"
+"0","perf <- performance(prediction.obj = pred,measure = ""tpr"",x.measure = ""fpr"")"
+"0","plot(perf)"
+"0",""

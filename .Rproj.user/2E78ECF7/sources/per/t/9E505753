@@ -1,0 +1,27 @@
+{
+    "id": "9E505753",
+    "path": "~/algo_ml_industry/ml-for-industry/01-telco.Rmd",
+    "project_path": "01-telco.Rmd",
+    "type": "r_markdown",
+    "hash": "3525961500",
+    "contents": "",
+    "dirty": false,
+    "created": 1712132312288.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "last_setup_crc32": "",
+        "cursorPosition": "2,11",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1712132117,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1712200667664,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,2 @@
+"0","customer <- read.csv(""assets/01-telco/WA_Fn-UseC_-Telco-Customer-Churn.csv"")"
+"0","head(customer)"
