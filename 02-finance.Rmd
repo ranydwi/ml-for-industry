@@ -25,7 +25,7 @@ Harapannya setelah mempunyai model machine learning dengan perfomance model yang
 ### Modelling Analysis
 
 #### Cleaning data
-```{r}
+```{r warning = F}
 credit <- read_csv("assets/02-finance/credit_record.csv")
 application <- read_csv("assets/02-finance/application_record.csv")
 ```
@@ -542,6 +542,6 @@ words_cors %>%
 Manfaat dari Sentiment Analysis yang telah dilakukan adalah kita dapat mengetahui pesan utama dari pendapat dan pemikiran customer terhadap suatu company atau product. Selain itu, output dari sentiment analysis dapat memberikan gambaran mengenai pelayanan atau product yang belum sesuai. Hal tersebut dapat membantu tim marketing untuk meneliti trend yang dibutuhkan customer dengan lebih baik. Seiring dengan peningkatan kualitas layanan dan pengembangan produk yang lebih baik, tentunya akan mengurangi tingkat churn customer.
 
 
-
+## Behaviour Scoring Using Scorecard Prediction
 
 

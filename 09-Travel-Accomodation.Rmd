@@ -1,6 +1,6 @@
 # Travel and Accomodation
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 # clear-up the environment
 rm(list = ls())
 
